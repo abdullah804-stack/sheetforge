@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-// Load the generated client at runtime to support Prisma setups where the
-// package does not expose PrismaClient through its TypeScript declarations.
-const { PrismaClient } = require("@prisma/client");
+import { PrismaClient } from "@prisma/client";
+
+export const dynamic = 'force-dynamic';
 
 const prisma = new PrismaClient();
 
