@@ -1,0 +1,112 @@
+import { NextResponse } from "next/server";
+import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
+import { writeFile, mkdir } from "fs/promises";
+import path from "path";
+
+export const dynamic = "force-dynamic";
+
+const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
+const ALLOWED_EXTENSIONS = [".xlsx", ".csv"];
+
+export async function POST(req: Request) {
+  try {
+    const session = await auth();
+
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    const formData = await req.formData();
+    const file = formData.get("file") as File | null;
+    const applicationId = formData.get("applicationId") as string | null;
+
+    if (!file) {
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    }
+
+    if (!applicationId) {
+      return NextResponse.json(
+        { error: "Application ID required" },
+        { status: 400 }
+      );
+    }
+
+    // Verify ownership
+    const application = await prisma.application.findUnique({
+      where: { id: applicationId },
+    });
+
+    if (!application || application.userId !== user.id) {
+      return NextResponse.json(
+        { error: "Application not found" },
+        { status: 404 }
+      );
+    }
+
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: "File too large. Maximum size is 25 MB." },
+        { status: 400 }
+      );
+    }
+
+    // Validate file extension
+    const ext = path.extname(file.name).toLowerCase();
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+      return NextResponse.json(
+        { error: "Only .xlsx and .csv files are supported." },
+        { status: 400 }
+      );
+    }
+
+    // Build storage path
+    const uploadDir = path.join(process.cwd(), "uploads", applicationId);
+    await mkdir(uploadDir, { recursive: true });
+
+    const safeFilename = `${Date.now()}-${file.name.replace(
+      /[^a-zA-Z0-9.\-_]/g,
+      "_"
+    )}`;
+    const filePath = path.join(uploadDir, safeFilename);
+
+    // Write the file
+    const bytes = await file.arrayBuffer();
+    await writeFile(filePath, Buffer.from(bytes));
+
+    // Save metadata
+    const workbook = await prisma.workbook.create({
+      data: {
+        applicationId,
+        filename: file.name,
+        fileType: ext.replace(".", ""),
+        fileSize: file.size,
+        storagePath: filePath,
+        status: "UPLOADED",
+      },
+    });
+
+    // Update application status
+    await prisma.application.update({
+      where: { id: applicationId },
+      data: { status: "UPLOADED" },
+    });
+
+    return NextResponse.json(workbook);
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      { error: "Upload failed" },
+      { status: 500 }
+    );
+  }
+}
