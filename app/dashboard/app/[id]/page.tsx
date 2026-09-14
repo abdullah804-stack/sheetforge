@@ -183,7 +183,7 @@ export default function AppDetailPage() {
           ← Back to dashboard
         </Link>
 
-        <div className="bg-white rounded-lg shadow p-8 mb-6">
+                <div className="bg-white rounded-lg shadow p-8 mb-6">
           <div className="flex justify-between items-start mb-4">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
@@ -193,9 +193,19 @@ export default function AppDetailPage() {
                 Created {new Date(application.createdAt).toLocaleDateString()}
               </p>
             </div>
-            <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600">
-              {application.status}
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600">
+                {application.status}
+              </span>
+              {definition && (
+                <Link
+                  href={`/app/${application.id}`}
+                  className="bg-black text-white px-4 py-2 rounded text-sm hover:bg-gray-800"
+                >
+                  Open Application →
+                </Link>
+              )}
+            </div>
           </div>
         </div>
 

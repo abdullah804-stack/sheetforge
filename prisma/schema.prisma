@@ -69,6 +69,7 @@ model Application {
 
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   workbooks Workbook[]
+  records   Record[]
 
   @@index([userId])
 }
@@ -91,4 +92,16 @@ model Workbook {
   application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
   @@index([applicationId])
+}
+model Record {
+  id            String   @id @default(cuid())
+  applicationId String
+  entityName    String
+  data          Json
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, entityName])
 }

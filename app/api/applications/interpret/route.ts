@@ -5,6 +5,7 @@ import { chat } from "@/lib/ai/client";
 import { SYSTEM_PROMPT, buildUserPrompt } from "@/lib/ai/prompt";
 import { buildAIInput } from "@/lib/ai/build-input";
 import { validateDefinition } from "@/lib/ai/validate-definition";
+import { importRecords } from "@/lib/records/import";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -82,7 +83,7 @@ export async function POST(req: Request) {
 
     const definition = validateDefinition(parsedJson, parsed);
 
-    // Persist the definition on the application
+        // Persist the definition on the application
     await prisma.application.update({
       where: { id: workbook.applicationId },
       data: {
@@ -93,7 +94,28 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json({ definition });
+    // Import records from the parsed workbook
+    // Clear any previous records for this app first (idempotent re-generation)
+    await prisma.record.deleteMany({
+      where: { applicationId: workbook.applicationId },
+    });
+
+    const importResult = await importRecords(
+      workbook.applicationId,
+      definition,
+      parsed
+    );
+
+    await prisma.application.update({
+      where: { id: workbook.applicationId },
+      data: { status: "READY" },
+    });
+
+    return NextResponse.json({
+      definition,
+      imported: importResult.imported,
+      skipped: importResult.skipped,
+    });
   } catch (error: any) {
     console.error(error);
     return NextResponse.json(
