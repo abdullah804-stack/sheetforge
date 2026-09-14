@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 interface ColumnProfile {
   name: string;
   detectedType: string;
@@ -32,7 +36,12 @@ export default function AnalysisResult({
 }: {
   analysis: ParsedWorkbook;
 }) {
-  const sheet = analysis.sheets[0];
+  const [activeSheet, setActiveSheet] = useState(0);
+  const sheet = analysis.sheets[activeSheet];
+
+  if (!sheet) {
+    return <p className="text-red-600 text-sm">No sheets detected.</p>;
+  }
 
   return (
     <div>
@@ -40,17 +49,39 @@ export default function AnalysisResult({
         <h3 className="text-md font-semibold text-gray-900 mb-3">
           Detected structure
         </h3>
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-3 gap-3">
+          <StatCard label="Sheets" value={analysis.sheetCount} />
           <StatCard label="Rows" value={sheet.rowCount} />
           <StatCard label="Columns" value={sheet.columnCount} />
-          <StatCard label="Sheets" value={analysis.sheetCount} />
         </div>
       </div>
 
+      {analysis.sheets.length > 1 && (
+        <div className="mb-6">
+          <h3 className="text-md font-semibold text-gray-900 mb-3">
+            Sheets
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {analysis.sheets.map((s, i) => (
+              <button
+                key={i}
+                onClick={() => setActiveSheet(i)}
+                className={`px-3 py-1.5 text-sm rounded border ${
+                  i === activeSheet
+                    ? "bg-black text-white border-black"
+                    : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
+                }`}
+              >
+                {s.name}{" "}
+                <span className="text-xs opacity-70">({s.rowCount})</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="mb-6">
-        <h3 className="text-md font-semibold text-gray-900 mb-3">
-          Columns
-        </h3>
+        <h3 className="text-md font-semibold text-gray-900 mb-3">Columns</h3>
         <div className="border border-gray-200 rounded divide-y">
           {sheet.columns.map((col) => (
             <div
@@ -62,7 +93,10 @@ export default function AnalysisResult({
                 <p className="text-xs text-gray-500 mt-0.5">
                   {col.uniqueValues} unique · {col.emptyPercent}% empty
                   {col.min !== undefined && col.max !== undefined && (
-                    <> · {col.min}–{col.max}</>
+                    <>
+                      {" "}
+                      · {col.min}–{col.max}
+                    </>
                   )}
                 </p>
               </div>

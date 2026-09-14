@@ -2,10 +2,13 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { parseCSV } from "@/lib/parser/csv";
+import { parseXLSX } from "@/lib/parser/xlsx";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
+  let workbookId: string | null = null;
+
   try {
     const session = await auth();
 
@@ -13,7 +16,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { workbookId } = await req.json();
+    const body = await req.json();
+    workbookId = body.workbookId;
 
     if (!workbookId) {
       return NextResponse.json(
@@ -42,14 +46,7 @@ export async function POST(req: Request) {
       );
     }
 
-    if (workbook.fileType !== "csv") {
-      return NextResponse.json(
-        { error: "Only CSV is supported for now" },
-        { status: 400 }
-      );
-    }
-
-    // Fetch file from Vercel Blob (private store — needs auth token)
+    // Fetch file from private Blob
     const fileRes = await fetch(workbook.storagePath, {
       headers: {
         Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
@@ -57,12 +54,23 @@ export async function POST(req: Request) {
     });
 
     if (!fileRes.ok) {
-      throw new Error(`Failed to fetch blob: ${fileRes.status}`);
+      throw new Error(`Failed to fetch file: ${fileRes.status}`);
     }
 
-    const content = await fileRes.text();
+    let parsed;
 
-    const parsed = await parseCSV(content, workbook.filename);
+    if (workbook.fileType === "csv") {
+      const content = await fileRes.text();
+      parsed = await parseCSV(content, workbook.filename);
+    } else if (workbook.fileType === "xlsx") {
+      const buffer = await fileRes.arrayBuffer();
+      parsed = await parseXLSX(buffer, workbook.filename);
+    } else {
+      return NextResponse.json(
+        { error: `Unsupported file type: ${workbook.fileType}` },
+        { status: 400 }
+      );
+    }
 
     await prisma.workbook.update({
       where: { id: workbook.id },
@@ -82,10 +90,8 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error(error);
 
-    // Try to record parse error if we have the workbook
-    try {
-      const { workbookId } = await req.clone().json();
-      if (workbookId) {
+    if (workbookId) {
+      try {
         await prisma.workbook.update({
           where: { id: workbookId },
           data: {
@@ -93,9 +99,9 @@ export async function POST(req: Request) {
             parseError: error?.message || "Unknown parse error",
           },
         });
+      } catch {
+        // ignore
       }
-    } catch {
-      // ignore
     }
 
     return NextResponse.json(
