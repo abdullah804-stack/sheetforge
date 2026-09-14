@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { writeFile, mkdir } from "fs/promises";
+import { put } from "@vercel/blob";
 import path from "path";
 
 export const dynamic = "force-dynamic";
@@ -40,7 +40,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Verify ownership
     const application = await prisma.application.findUnique({
       where: { id: applicationId },
     });
@@ -52,7 +51,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Validate file size
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
         { error: "File too large. Maximum size is 25 MB." },
@@ -60,7 +58,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Validate file extension
     const ext = path.extname(file.name).toLowerCase();
     if (!ALLOWED_EXTENSIONS.includes(ext)) {
       return NextResponse.json(
@@ -69,33 +66,31 @@ export async function POST(req: Request) {
       );
     }
 
-    // Build storage path
-    const uploadDir = path.join(process.cwd(), "uploads", applicationId);
-    await mkdir(uploadDir, { recursive: true });
-
+    // Build a safe storage key
     const safeFilename = `${Date.now()}-${file.name.replace(
       /[^a-zA-Z0-9.\-_]/g,
       "_"
     )}`;
-    const filePath = path.join(uploadDir, safeFilename);
+    const blobPath = `applications/${applicationId}/${safeFilename}`;
 
-    // Write the file
-    const bytes = await file.arrayBuffer();
-    await writeFile(filePath, Buffer.from(bytes));
+    // Upload to Vercel Blob
+    const blob = await put(blobPath, file, {
+      access: "private",
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+    });
 
-    // Save metadata
+    // Save metadata in the database
     const workbook = await prisma.workbook.create({
       data: {
         applicationId,
         filename: file.name,
         fileType: ext.replace(".", ""),
         fileSize: file.size,
-        storagePath: filePath,
+        storagePath: blob.url,
         status: "UPLOADED",
       },
     });
 
-    // Update application status
     await prisma.application.update({
       where: { id: applicationId },
       data: { status: "UPLOADED" },

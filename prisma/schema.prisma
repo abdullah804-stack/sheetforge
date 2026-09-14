@@ -73,15 +73,19 @@ model Application {
 }
 
 model Workbook {
-  id           String   @id @default(cuid())
+  id            String   @id @default(cuid())
   applicationId String
-  filename     String
-  fileType     String
-  fileSize     Int
-  storagePath  String
-  status       String   @default("UPLOADED")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  filename      String
+  fileType      String
+  fileSize      Int
+  storagePath   String
+  status        String   @default("UPLOADED")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // NEW:
+  parsedData    Json?
+  parseError    String?
 
   application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import AnalysisResult from "./AnalysisResult";
 
 interface Application {
   id: string;
@@ -19,6 +20,7 @@ interface Workbook {
   fileSize: number;
   status: string;
   createdAt: string;
+  parsedData?: any;
 }
 
 export default function AppDetailPage() {
@@ -30,6 +32,8 @@ export default function AppDetailPage() {
   const [workbook, setWorkbook] = useState<Workbook | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysis, setAnalysis] = useState<any>(null);
   const [error, setError] = useState("");
   const [dragging, setDragging] = useState(false);
 
@@ -44,6 +48,9 @@ export default function AppDetailPage() {
       const data = await res.json();
       setApplication(data.application);
       setWorkbook(data.workbook);
+      if (data.workbook?.parsedData) {
+        setAnalysis(data.workbook.parsedData);
+      }
       setLoading(false);
     }
     load();
@@ -87,6 +94,29 @@ export default function AppDetailPage() {
     if (file) handleFile(file);
   }
 
+  async function handleAnalyze() {
+    if (!workbook) return;
+    setAnalyzing(true);
+    setError("");
+
+    const res = await fetch("/api/applications/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ workbookId: workbook.id }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error || "Analysis failed");
+      setAnalyzing(false);
+      return;
+    }
+
+    const result = await res.json();
+    setAnalysis(result);
+    setAnalyzing(false);
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 p-8 flex items-center justify-center">
@@ -95,7 +125,7 @@ export default function AppDetailPage() {
     );
   }
 
-  if (error || !application) {
+  if (error && !application) {
     return (
       <div className="min-h-screen bg-gray-50 p-8">
         <div className="max-w-3xl mx-auto">
@@ -108,6 +138,10 @@ export default function AppDetailPage() {
         </div>
       </div>
     );
+  }
+
+  if (!application) {
+    return null;
   }
 
   return (
@@ -141,20 +175,37 @@ export default function AppDetailPage() {
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
               Uploaded Spreadsheet
             </h2>
-            <div className="border border-gray-200 rounded p-4 flex items-center justify-between">
+
+            <div className="border border-gray-200 rounded p-4 flex items-center justify-between mb-6">
               <div>
                 <p className="font-medium text-gray-900">{workbook.filename}</p>
                 <p className="text-sm text-gray-500 mt-1">
-                  {(workbook.fileSize / 1024).toFixed(1)} KB · {workbook.fileType.toUpperCase()}
+                  {(workbook.fileSize / 1024).toFixed(1)} KB ·{" "}
+                  {workbook.fileType.toUpperCase()}
                 </p>
               </div>
               <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-700">
                 {workbook.status}
               </span>
             </div>
-            <p className="text-sm text-gray-500 mt-6">
-              Next step: SheetForge will analyze this spreadsheet and generate your application. (Coming next.)
-            </p>
+
+            {error && (
+              <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">
+                {error}
+              </div>
+            )}
+
+            {analysis ? (
+              <AnalysisResult analysis={analysis} />
+            ) : (
+              <button
+                onClick={handleAnalyze}
+                disabled={analyzing}
+                className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800 disabled:opacity-50"
+              >
+                {analyzing ? "Analyzing..." : "Analyze Spreadsheet"}
+              </button>
+            )}
           </div>
         ) : (
           <div className="bg-white rounded-lg shadow p-8">
@@ -194,9 +245,7 @@ export default function AppDetailPage() {
               <p className="text-gray-700 font-medium mb-1">
                 {uploading ? "Uploading..." : "Drop your spreadsheet here"}
               </p>
-              <p className="text-gray-400 text-sm">
-                or click to select a file
-              </p>
+              <p className="text-gray-400 text-sm">or click to select a file</p>
               <p className="text-gray-400 text-xs mt-3">
                 Excel (.xlsx) or CSV (.csv) · Max 25 MB
               </p>
