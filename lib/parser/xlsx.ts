@@ -82,7 +82,7 @@ export async function parseXLSX(
       rowCount: rowObjects.length,
       columnCount: headers.length,
       headers,
-      sampleRows: rowObjects.slice(0, 20),
+      sampleRows: rowObjects,
       columns,
     });
   }

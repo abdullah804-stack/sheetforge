@@ -60,7 +60,11 @@ export default async function AppRuntimePage({
     orderBy: { createdAt: "asc" },
   });
 
-  const totalCount = records.length;
+  const metrics = computeMetrics(
+    records.map((r) => ({ id: r.id, data: r.data as Record<string, any> })),
+    definition.dashboard?.metrics || [],
+    definition
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -86,16 +90,18 @@ export default async function AppRuntimePage({
 
       {/* Content */}
       <div className="max-w-6xl mx-auto p-6">
-        <div className="mb-6 grid grid-cols-3 gap-4">
-          <MetricCard label="Total Records" value={totalCount.toString()} />
-          <MetricCard
-            label="Fields"
-            value={definition.primaryEntity.fields.length.toString()}
-          />
-          <MetricCard
-            label="Status"
-            value={application.status}
-          />
+        <div
+          className={`mb-6 grid gap-4 ${
+            metrics.length >= 4
+              ? "grid-cols-4"
+              : metrics.length === 3
+                ? "grid-cols-3"
+                : "grid-cols-2"
+          }`}
+        >
+          {metrics.map((m, i) => (
+            <MetricCard key={i} label={m.label} value={m.value} />
+          ))}
         </div>
 
         <RecordsTable
@@ -110,6 +116,61 @@ export default async function AppRuntimePage({
       </div>
     </div>
   );
+}
+
+function computeMetrics(
+  records: { id: string; data: Record<string, any> }[],
+  metricDefs: any[],
+  definition: any
+): { label: string; value: string }[] {
+  const results: { label: string; value: string }[] = [];
+
+  // Always include total count
+  results.push({ label: "Total Records", value: records.length.toString() });
+
+  for (const metric of metricDefs || []) {
+    if (metric.type === "count") {
+      results.push({
+        label: metric.label,
+        value: records.length.toString(),
+      });
+      continue;
+    }
+
+    if (metric.type === "sum" && metric.field) {
+      const sum = records.reduce((acc, r) => {
+        const v = Number(r.data[metric.field]);
+        return acc + (isNaN(v) ? 0 : v);
+      }, 0);
+      results.push({
+        label: metric.label,
+        value: formatNumber(sum),
+      });
+      continue;
+    }
+
+    if (metric.type === "average" && metric.field) {
+      const valid = records
+        .map((r) => Number(r.data[metric.field]))
+        .filter((n) => !isNaN(n));
+      const avg = valid.length
+        ? valid.reduce((a, b) => a + b, 0) / valid.length
+        : 0;
+      results.push({
+        label: metric.label,
+        value: formatNumber(avg),
+      });
+      continue;
+    }
+  }
+
+  return results.slice(0, 4);
+}
+
+function formatNumber(n: number): string {
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+  return n.toFixed(n % 1 === 0 ? 0 : 2);
 }
 
 function MetricCard({ label, value }: { label: string; value: string }) {

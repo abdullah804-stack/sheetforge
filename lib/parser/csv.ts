@@ -64,7 +64,7 @@ export async function parseCSV(
     rowCount: rows.length,
     columnCount: headers.length,
     headers,
-    sampleRows: rows.slice(0, 20),
+    sampleRows: rows,
     columns,
   };
 

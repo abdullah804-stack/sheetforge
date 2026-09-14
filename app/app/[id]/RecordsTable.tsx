@@ -13,7 +13,7 @@ interface FieldDef {
   visible: boolean;
 }
 
-interface Record {
+interface DataRecord {
   id: string;
   data: Record<string, any>;
 }
@@ -27,12 +27,20 @@ export default function RecordsTable({
   applicationId: string;
   entityName: string;
   fields: FieldDef[];
-  initialRecords: Record[];
+  initialRecords: DataRecord[];
 }) {
-  const [records, setRecords] = useState<Record[]>(initialRecords);
+  const [records, setRecords] = useState<DataRecord[]>(initialRecords);
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<DataRecord | null>(null);
+  const [formData, setFormData] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const [deleteConfirm, setDeleteConfirm] = useState<DataRecord | null>(null);
 
   const visibleFields = fields.filter((f) => f.visible);
 
@@ -87,6 +95,96 @@ export default function RecordsTable({
     }
   }
 
+  function openAddForm() {
+    setEditingRecord(null);
+    setFormData({});
+    setError("");
+    setFormOpen(true);
+  }
+
+  function openEditForm(record: DataRecord) {
+    setEditingRecord(record);
+    const initial: Record<string, string> = {};
+    for (const f of fields) {
+      initial[f.name] = record.data[f.name] ?? "";
+    }
+    setFormData(initial);
+    setError("");
+    setFormOpen(true);
+  }
+
+  function closeForm() {
+    setFormOpen(false);
+    setEditingRecord(null);
+    setFormData({});
+    setError("");
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+
+    // Validate required fields
+    for (const f of fields) {
+      if (f.required && !formData[f.name]?.trim()) {
+        setError(`${f.label} is required`);
+        setSaving(false);
+        return;
+      }
+    }
+
+    const url = "/api/records";
+    const method = editingRecord ? "PATCH" : "POST";
+    const body = editingRecord
+      ? { recordId: editingRecord.id, data: formData }
+      : { applicationId, entityName, data: formData };
+
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error || "Save failed");
+      setSaving(false);
+      return;
+    }
+
+    const result = await res.json();
+
+    if (editingRecord) {
+      setRecords(
+        records.map((r) => (r.id === result.record.id ? result.record : r))
+      );
+    } else {
+      setRecords([...records, result.record]);
+    }
+
+    setSaving(false);
+    closeForm();
+  }
+
+  async function handleDelete() {
+    if (!deleteConfirm) return;
+
+    const res = await fetch(
+      `/api/records?recordId=${deleteConfirm.id}`,
+      { method: "DELETE" }
+    );
+
+    if (!res.ok) {
+      setError("Delete failed");
+      setDeleteConfirm(null);
+      return;
+    }
+
+    setRecords(records.filter((r) => r.id !== deleteConfirm.id));
+    setDeleteConfirm(null);
+  }
+
   return (
     <div className="bg-white rounded-lg shadow">
       <div className="p-4 border-b flex items-center justify-between gap-3">
@@ -97,15 +195,23 @@ export default function RecordsTable({
           onChange={(e) => setSearch(e.target.value)}
           className="border border-gray-300 text-gray-900 rounded px-3 py-2 text-sm w-64"
         />
-        <p className="text-sm text-gray-500">
-          {filtered.length} of {records.length} records
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-gray-500">
+            {filtered.length} of {records.length}
+          </p>
+          <button
+            onClick={openAddForm}
+            className="bg-black text-white px-3 py-2 rounded text-sm hover:bg-gray-800"
+          >
+            + Add Record
+          </button>
+        </div>
       </div>
 
       {filtered.length === 0 ? (
         <div className="p-12 text-center text-gray-500 text-sm">
           {records.length === 0
-            ? "No records imported yet."
+            ? "No records yet. Click + Add Record to create the first one."
             : "No matches for your search."}
         </div>
       ) : (
@@ -129,6 +235,9 @@ export default function RecordsTable({
                     )}
                   </th>
                 ))}
+                <th className="px-4 py-2 text-right text-xs font-semibold text-gray-600">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -142,10 +251,156 @@ export default function RecordsTable({
                       {formatValue(r.data[f.name], f.type)}
                     </td>
                   ))}
+                  <td className="px-4 py-2 text-right whitespace-nowrap">
+                    <button
+                      onClick={() => openEditForm(r)}
+                      className="text-xs text-gray-600 hover:text-gray-900 mr-3"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => setDeleteConfirm(r)}
+                      className="text-xs text-red-600 hover:text-red-800"
+                    >
+                      Delete
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Add / Edit form modal */}
+      {formOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <form onSubmit={handleSave}>
+              <div className="p-6 border-b">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {editingRecord ? "Edit Record" : "Add Record"}
+                </h2>
+              </div>
+
+              <div className="p-6 grid grid-cols-2 gap-4">
+                {error && (
+                  <div className="col-span-2 bg-red-50 text-red-600 p-3 rounded text-sm">
+                    {error}
+                  </div>
+                )}
+
+                {fields.map((f) => (
+                  <div
+                    key={f.name}
+                    className={f.type === "longtext" ? "col-span-2" : ""}
+                  >
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {f.label}
+                      {f.required && (
+                        <span className="text-red-500 ml-1">*</span>
+                      )}
+                    </label>
+
+                    {f.type === "longtext" ? (
+                      <textarea
+                        value={formData[f.name] ?? ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            [f.name]: e.target.value,
+                          })
+                        }
+                        rows={3}
+                        className="w-full border border-gray-300 text-gray-900 rounded px-3 py-2"
+                      />
+                    ) : f.type === "boolean" ? (
+                      <select
+                        value={formData[f.name] ?? ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            [f.name]: e.target.value,
+                          })
+                        }
+                        className="w-full border border-gray-300 text-gray-900 rounded px-3 py-2"
+                      >
+                        <option value="">—</option>
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                      </select>
+                    ) : (
+                      <input
+                        type={
+                          f.type === "integer" || f.type === "decimal" || f.type === "currency"
+                            ? "number"
+                            : f.type === "date" || f.type === "datetime"
+                              ? "date"
+                              : f.type === "email"
+                                ? "email"
+                                : "text"
+                        }
+                        step={f.type === "decimal" || f.type === "currency" ? "0.01" : undefined}
+                        value={formData[f.name] ?? ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            [f.name]: e.target.value,
+                          })
+                        }
+                        className="w-full border border-gray-300 text-gray-900 rounded px-3 py-2"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-6 border-t flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={closeForm}
+                  className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="bg-black text-white px-4 py-2 rounded text-sm hover:bg-gray-800 disabled:opacity-50"
+                >
+                  {saving ? "Saving..." : editingRecord ? "Save Changes" : "Create Record"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirm modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+              Delete Record?
+            </h2>
+            <p className="text-sm text-gray-500 mb-6">
+              This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
