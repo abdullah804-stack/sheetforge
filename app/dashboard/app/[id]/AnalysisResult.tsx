@@ -31,11 +31,7 @@ interface ParsedWorkbook {
   sheets: ParsedSheet[];
 }
 
-export default function AnalysisResult({
-  analysis,
-}: {
-  analysis: ParsedWorkbook;
-}) {
+export function AnalysisResult({ analysis }: { analysis: ParsedWorkbook }) {
   const [activeSheet, setActiveSheet] = useState(0);
   const sheet = analysis.sheets[activeSheet];
 
@@ -158,3 +154,4 @@ function StatCard({ label, value }: { label: string; value: number }) {
     </div>
   );
 }
+export default AnalysisResult;

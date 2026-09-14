@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import AnalysisResult from "./AnalysisResult";
+import DefinitionPreview from "./DefinitionPreview";
 
 interface Application {
   id: string;
@@ -34,6 +35,8 @@ export default function AppDetailPage() {
   const [uploading, setUploading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<any>(null);
+  const [generating, setGenerating] = useState(false);
+  const [definition, setDefinition] = useState<any>(null);
   const [error, setError] = useState("");
   const [dragging, setDragging] = useState(false);
 
@@ -50,6 +53,9 @@ export default function AppDetailPage() {
       setWorkbook(data.workbook);
       if (data.workbook?.parsedData) {
         setAnalysis(data.workbook.parsedData);
+      }
+      if (data.application?.definition) {
+        setDefinition(data.application.definition);
       }
       setLoading(false);
     }
@@ -115,6 +121,29 @@ export default function AppDetailPage() {
     const result = await res.json();
     setAnalysis(result);
     setAnalyzing(false);
+  }
+
+  async function handleGenerate() {
+    if (!workbook) return;
+    setGenerating(true);
+    setError("");
+
+    const res = await fetch("/api/applications/interpret", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ workbookId: workbook.id }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error || "Generation failed");
+      setGenerating(false);
+      return;
+    }
+
+    const result = await res.json();
+    setDefinition(result.definition);
+    setGenerating(false);
   }
 
   if (loading) {
@@ -196,7 +225,34 @@ export default function AppDetailPage() {
             )}
 
             {analysis ? (
-              <AnalysisResult analysis={analysis} />
+              <div>
+                <AnalysisResult analysis={analysis} />
+
+                <div className="border-t mt-8 pt-6">
+                  {definition ? (
+                    <DefinitionPreview definition={definition} />
+                  ) : (
+                    <>
+                      <h3 className="text-md font-semibold text-gray-900 mb-2">
+                        Ready to generate
+                      </h3>
+                      <p className="text-sm text-gray-500 mb-4">
+                        SheetForge will ask AI to design your application based on
+                        this data.
+                      </p>
+                      <button
+                        onClick={handleGenerate}
+                        disabled={generating}
+                        className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800 disabled:opacity-50"
+                      >
+                        {generating
+                          ? "AI is designing your app..."
+                          : "Generate Application"}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
             ) : (
               <button
                 onClick={handleAnalyze}
@@ -245,7 +301,9 @@ export default function AppDetailPage() {
               <p className="text-gray-700 font-medium mb-1">
                 {uploading ? "Uploading..." : "Drop your spreadsheet here"}
               </p>
-              <p className="text-gray-400 text-sm">or click to select a file</p>
+              <p className="text-gray-400 text-sm">
+                or click to select a file
+              </p>
               <p className="text-gray-400 text-xs mt-3">
                 Excel (.xlsx) or CSV (.csv) · Max 25 MB
               </p>
