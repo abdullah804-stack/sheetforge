@@ -1,5 +1,7 @@
 "use client";
-
+import Charts from "./Charts";
+import { computeChartData } from "@/lib/charts/compute";
+import AIReasoning from "./AIReasoning";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -12,6 +14,10 @@ interface Application {
   status: string;
   type: string;
   createdAt: string;
+  slug?: string | null;
+  visibility?: string;
+  publishedAt?: string | null;
+  definition?: any;
 }
 
 interface Workbook {
@@ -39,6 +45,8 @@ export default function AppDetailPage() {
   const [definition, setDefinition] = useState<any>(null);
   const [error, setError] = useState("");
   const [dragging, setDragging] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -51,12 +59,8 @@ export default function AppDetailPage() {
       const data = await res.json();
       setApplication(data.application);
       setWorkbook(data.workbook);
-      if (data.workbook?.parsedData) {
-        setAnalysis(data.workbook.parsedData);
-      }
-      if (data.application?.definition) {
-        setDefinition(data.application.definition);
-      }
+      if (data.workbook?.parsedData) setAnalysis(data.workbook.parsedData);
+      if (data.application?.definition) setDefinition(data.application.definition);
       setLoading(false);
     }
     load();
@@ -104,20 +108,17 @@ export default function AppDetailPage() {
     if (!workbook) return;
     setAnalyzing(true);
     setError("");
-
     const res = await fetch("/api/applications/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ workbookId: workbook.id }),
     });
-
     if (!res.ok) {
       const data = await res.json();
       setError(data.error || "Analysis failed");
       setAnalyzing(false);
       return;
     }
-
     const result = await res.json();
     setAnalysis(result);
     setAnalyzing(false);
@@ -127,23 +128,77 @@ export default function AppDetailPage() {
     if (!workbook) return;
     setGenerating(true);
     setError("");
-
     const res = await fetch("/api/applications/interpret", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ workbookId: workbook.id }),
     });
-
     if (!res.ok) {
       const data = await res.json();
       setError(data.error || "Generation failed");
       setGenerating(false);
       return;
     }
-
     const result = await res.json();
     setDefinition(result.definition);
     setGenerating(false);
+    const refreshed = await fetch(`/api/applications/get?id=${id}`).then((r) =>
+      r.json()
+    );
+    setApplication(refreshed.application);
+  }
+
+  async function handlePublish() {
+    if (!application) return;
+    setPublishing(true);
+    setError("");
+
+    const res = await fetch("/api/applications/publish", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ applicationId: application.id }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error || "Publish failed");
+      setPublishing(false);
+      return;
+    }
+
+    const data = await res.json();
+    setApplication({ ...application, slug: data.slug, visibility: "PUBLIC" });
+    setPublishing(false);
+  }
+
+  async function handleUnpublish() {
+    if (!application) return;
+    setPublishing(true);
+    setError("");
+
+    const res = await fetch("/api/applications/unpublish", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ applicationId: application.id }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error || "Unpublish failed");
+      setPublishing(false);
+      return;
+    }
+
+    setApplication({ ...application, slug: null, visibility: "PRIVATE" });
+    setPublishing(false);
+  }
+
+  async function copyLink() {
+    if (!application?.slug) return;
+    const url = `${window.location.origin}/a/${application.slug}`;
+    await navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   if (loading) {
@@ -169,9 +224,10 @@ export default function AppDetailPage() {
     );
   }
 
-  if (!application) {
-    return null;
-  }
+  if (!application) return null;
+
+  const isPublished =
+    application.visibility === "PUBLIC" && !!application.slug;
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -183,7 +239,8 @@ export default function AppDetailPage() {
           ← Back to dashboard
         </Link>
 
-                <div className="bg-white rounded-lg shadow p-8 mb-6">
+        {/* Header */}
+        <div className="bg-white rounded-lg shadow p-8 mb-6">
           <div className="flex justify-between items-start mb-4">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
@@ -207,8 +264,71 @@ export default function AppDetailPage() {
               )}
             </div>
           </div>
+
+          {/* Publish panel */}
+          {definition && (
+            <div className="border-t pt-6 mt-2">
+              {isPublished ? (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                    <span className="text-sm font-medium text-green-700">
+                      Published
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      readOnly
+                      value={`${typeof window !== "undefined" ? window.location.origin : ""}/a/${application.slug}`}
+                      className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm bg-gray-50 text-gray-700"
+                    />
+                    <button
+                      onClick={copyLink}
+                      className="bg-black text-white px-4 py-2 rounded text-sm hover:bg-gray-800"
+                    >
+                      {copied ? "Copied" : "Copy"}
+                    </button>
+                    <a
+                      href={`/a/${application.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="border border-gray-300 px-4 py-2 rounded text-sm hover:bg-gray-50"
+                    >
+                      Open
+                    </a>
+                  </div>
+                  <button
+                    onClick={handleUnpublish}
+                    disabled={publishing}
+                    className="text-xs text-gray-500 hover:text-red-600 mt-3"
+                  >
+                    Unpublish
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">
+                      Share this application
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Anyone with the link can view (read-only).
+                    </p>
+                  </div>
+                  <button
+                    onClick={handlePublish}
+                    disabled={publishing}
+                    className="bg-black text-white px-4 py-2 rounded text-sm hover:bg-gray-800 disabled:opacity-50"
+                  >
+                    {publishing ? "Publishing..." : "Publish"}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
+        {/* Spreadsheet section */}
         {workbook ? (
           <div className="bg-white rounded-lg shadow p-8">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
@@ -234,21 +354,27 @@ export default function AppDetailPage() {
               </div>
             )}
 
-            {analysis ? (
+                        {analysis ? (
               <div>
                 <AnalysisResult analysis={analysis} />
 
                 <div className="border-t mt-8 pt-6">
                   {definition ? (
-                    <DefinitionPreview definition={definition} />
+                    <div className="space-y-6">
+                      <AIReasoning
+                        definition={definition}
+                        workbook={analysis}
+                      />
+                      <DefinitionPreview definition={definition} />
+                    </div>
                   ) : (
                     <>
                       <h3 className="text-md font-semibold text-gray-900 mb-2">
                         Ready to generate
                       </h3>
                       <p className="text-sm text-gray-500 mb-4">
-                        SheetForge will ask AI to design your application based on
-                        this data.
+                        SheetForge will ask AI to design your application based
+                        on this data.
                       </p>
                       <button
                         onClick={handleGenerate}
@@ -307,7 +433,6 @@ export default function AppDetailPage() {
                 onChange={handleFileInput}
                 className="hidden"
               />
-
               <p className="text-gray-700 font-medium mb-1">
                 {uploading ? "Uploading..." : "Drop your spreadsheet here"}
               </p>

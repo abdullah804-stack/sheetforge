@@ -64,6 +64,7 @@ model Application {
   visibility String   @default("PRIVATE")
   slug       String?  @unique
   definition Json?    // ← ADD THIS
+  publishedAt DateTime?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 

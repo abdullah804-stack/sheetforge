@@ -1,59 +1,28 @@
-import { auth } from "@/auth";
-import Charts from "./Charts";
-import { computeChartData } from "@/lib/charts/compute";
-import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import Link from "next/link";
-import RecordsTable from "./RecordsTable";
+import { notFound } from "next/navigation";
+import PublicRecordsTable from "./PublicRecordsTable";
+import Charts from "@/app/app/[id]/Charts";
+import { computeChartData } from "@/lib/charts/compute";
 
-export default async function AppRuntimePage({
+export const dynamic = "force-dynamic";
+
+export default async function PublicAppPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }) {
-  const session = await auth();
-
-  if (!session?.user?.email) {
-    redirect("/login");
-  }
-
-  const { id } = await params;
-
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-  });
-
-  if (!user) redirect("/login");
+  const { slug } = await params;
 
   const application = await prisma.application.findUnique({
-    where: { id },
+    where: { slug },
   });
 
-  if (!application || application.userId !== user.id) {
+  if (!application || application.visibility !== "PUBLIC") {
     notFound();
   }
 
   const definition = application.definition as any;
-
-  if (!definition) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-8">
-        <div className="max-w-3xl mx-auto">
-          <Link
-            href="/dashboard"
-            className="text-sm text-gray-500 hover:text-gray-900 mb-6 inline-block"
-          >
-            ← Back to dashboard
-          </Link>
-          <div className="bg-white rounded-lg shadow p-8 text-center">
-            <p className="text-gray-600">
-              This application hasn't been generated yet.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (!definition) notFound();
 
   const entityName = definition.primaryEntity.name;
 
@@ -69,8 +38,7 @@ export default async function AppRuntimePage({
 
   const metrics = computeMetrics(
     recordObjects,
-    definition.dashboard?.metrics || [],
-    definition
+    definition.dashboard?.metrics || []
   );
 
   const chartDefs = (definition.charts || []).slice(0, 3);
@@ -86,19 +54,12 @@ export default async function AppRuntimePage({
               {application.name}
             </h1>
             <p className="text-xs text-gray-500">
-              {definition.primaryEntity.name}
+              {definition.primaryEntity.name} · Read-only
             </p>
           </div>
-          <Link
-            href={`/dashboard/app/${application.id}`}
-            className="text-sm text-gray-500 hover:text-gray-900"
-          >
-            Edit definition →
-          </Link>
         </div>
       </div>
 
-      {/* Content */}
       <div className="max-w-6xl mx-auto p-6">
                 <div
           className={`mb-6 grid gap-4 ${
@@ -110,7 +71,12 @@ export default async function AppRuntimePage({
           }`}
         >
           {metrics.map((m, i) => (
-            <MetricCard key={i} label={m.label} value={m.value} />
+            <div key={i} className="bg-white rounded-lg shadow p-4">
+              <p className="text-xs text-gray-500">{m.label}</p>
+              <p className="text-2xl font-semibold text-gray-900 mt-1">
+                {m.value}
+              </p>
+            </div>
           ))}
         </div>
 
@@ -118,11 +84,9 @@ export default async function AppRuntimePage({
           <Charts charts={chartDefs} dataByChart={chartData} />
         )}
 
-        <RecordsTable
-          applicationId={application.id}
-          entityName={entityName}
+        <PublicRecordsTable
           fields={definition.primaryEntity.fields}
-          initialRecords={records.map((r) => ({
+          records={records.map((r) => ({
             id: r.id,
             data: r.data as Record<string, any>,
           }))}
@@ -134,35 +98,24 @@ export default async function AppRuntimePage({
 
 function computeMetrics(
   records: { id: string; data: Record<string, any> }[],
-  metricDefs: any[],
-  definition: any
+  metricDefs: any[]
 ): { label: string; value: string }[] {
   const results: { label: string; value: string }[] = [];
-
-  // Always include total count
   results.push({ label: "Total Records", value: records.length.toString() });
 
   for (const metric of metricDefs || []) {
     if (metric.type === "count") {
-      results.push({
-        label: metric.label,
-        value: records.length.toString(),
-      });
+      results.push({ label: metric.label, value: records.length.toString() });
       continue;
     }
-
     if (metric.type === "sum" && metric.field) {
       const sum = records.reduce((acc, r) => {
         const v = Number(r.data[metric.field]);
         return acc + (isNaN(v) ? 0 : v);
       }, 0);
-      results.push({
-        label: metric.label,
-        value: formatNumber(sum),
-      });
+      results.push({ label: metric.label, value: formatNumber(sum) });
       continue;
     }
-
     if (metric.type === "average" && metric.field) {
       const valid = records
         .map((r) => Number(r.data[metric.field]))
@@ -170,14 +123,10 @@ function computeMetrics(
       const avg = valid.length
         ? valid.reduce((a, b) => a + b, 0) / valid.length
         : 0;
-      results.push({
-        label: metric.label,
-        value: formatNumber(avg),
-      });
+      results.push({ label: metric.label, value: formatNumber(avg) });
       continue;
     }
   }
-
   return results.slice(0, 4);
 }
 
@@ -185,13 +134,4 @@ function formatNumber(n: number): string {
   if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
   if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
   return n.toFixed(n % 1 === 0 ? 0 : 2);
-}
-
-function MetricCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-white rounded-lg shadow p-4">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="text-2xl font-semibold text-gray-900 mt-1">{value}</p>
-    </div>
-  );
 }
