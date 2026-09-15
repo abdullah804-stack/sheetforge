@@ -1,6 +1,5 @@
 "use client";
-import Charts from "./Charts";
-import { computeChartData } from "@/lib/charts/compute";
+
 import AIReasoning from "./AIReasoning";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";

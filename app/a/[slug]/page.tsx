@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import { generateSummary } from "@/lib/summary/generate";
 import PublicRecordsTable from "./PublicRecordsTable";
 import Charts from "@/app/app/[id]/Charts";
 import { computeChartData } from "@/lib/charts/compute";
@@ -44,6 +45,12 @@ export default async function PublicAppPage({
   const chartDefs = (definition.charts || []).slice(0, 3);
   const chartData = chartDefs.map((c: any) => computeChartData(recordObjects, c));
 
+    const summarySentences = generateSummary(
+    recordObjects,
+    definition.primaryEntity,
+    application.name
+  );
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top bar */}
@@ -61,6 +68,27 @@ export default async function PublicAppPage({
       </div>
 
       <div className="max-w-6xl mx-auto p-6">
+                        {summarySentences.length > 0 && (
+          <div className="mb-6 bg-white rounded-lg shadow p-6">
+            <div className="flex items-start gap-3">
+              <div className="w-1 self-stretch bg-black rounded-full mt-1"></div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900 mb-2">
+                  Summary
+                </p>
+                <div className="space-y-1">
+                  {summarySentences.map((s, i) => (
+                    <p key={i} className="text-sm text-gray-700 leading-relaxed">
+                      {s}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+                
+                
                 <div
           className={`mb-6 grid gap-4 ${
             metrics.length >= 4
