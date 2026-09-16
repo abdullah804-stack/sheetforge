@@ -87,8 +87,8 @@ export default async function AppRuntimePage({
   return (
     <div className="min-h-screen bg-gray-50">
             {/* Top bar */}
-      <div className="bg-white border-b">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div className="bg-white border-b">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center">
           <div>
             <h1 className="text-xl font-bold text-gray-900">
               {application.name}
@@ -131,13 +131,13 @@ export default async function AppRuntimePage({
           </div>
         )}
                 
-                <div
-          className={`mb-6 grid gap-4 ${
+                        <div
+          className={`mb-6 grid gap-4 grid-cols-2 ${
             metrics.length >= 4
-              ? "grid-cols-4"
+              ? "sm:grid-cols-4"
               : metrics.length === 3
-                ? "grid-cols-3"
-                : "grid-cols-2"
+                ? "sm:grid-cols-3"
+                : "sm:grid-cols-2"
           }`}
         >
           {metrics.map((m, i) => (

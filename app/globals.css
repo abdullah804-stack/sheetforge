@@ -12,6 +12,8 @@ body {
   background: #ffffff;
   color: #0a0a0a;
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 ::selection {
@@ -19,7 +21,14 @@ body {
   color: #ffffff;
 }
 
-/* Scroll-triggered fade-in */
+/* Focus rings — cleaner than browser default */
+*:focus-visible {
+  outline: 2px solid #0a0a0a;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Scroll-triggered fade-in (existing) */
 .reveal {
   opacity: 0;
   transform: translateY(16px);
@@ -31,7 +40,6 @@ body {
   transform: translateY(0);
 }
 
-/* Stagger helper */
 .reveal.delay-1 { transition-delay: 0.1s; }
 .reveal.delay-2 { transition-delay: 0.2s; }
 .reveal.delay-3 { transition-delay: 0.3s; }
@@ -47,7 +55,7 @@ body {
   animation: float 6s ease-in-out infinite;
 }
 
-/* Arrow pulse for the "→" between spreadsheet and app */
+/* Arrow pulse */
 @keyframes pulse-arrow {
   0%, 100% { opacity: 0.4; transform: translateX(0); }
   50% { opacity: 1; transform: translateX(4px); }
@@ -57,7 +65,24 @@ body {
   animation: pulse-arrow 2.4s ease-in-out infinite;
 }
 
-/* Respect reduced motion */
+/* Skeleton shimmer for loading states */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #f5f5f5 25%,
+    #ebebeb 50%,
+    #f5f5f5 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: 4px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .reveal {
     opacity: 1;
@@ -65,7 +90,8 @@ body {
     transition: none;
   }
   .float-slow,
-  .pulse-arrow {
+  .pulse-arrow,
+  .skeleton {
     animation: none;
   }
 }

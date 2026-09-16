@@ -89,13 +89,13 @@ export default async function PublicAppPage({
         )}
                 
                 
-                <div
-          className={`mb-6 grid gap-4 ${
+                        <div
+          className={`mb-6 grid gap-4 grid-cols-2 ${
             metrics.length >= 4
-              ? "grid-cols-4"
+              ? "sm:grid-cols-4"
               : metrics.length === 3
-                ? "grid-cols-3"
-                : "grid-cols-2"
+                ? "sm:grid-cols-3"
+                : "sm:grid-cols-2"
           }`}
         >
           {metrics.map((m, i) => (

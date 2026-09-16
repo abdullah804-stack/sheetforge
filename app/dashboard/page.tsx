@@ -58,16 +58,32 @@ export default async function DashboardPage() {
 
         {/* Applications list */}
         {applications.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
+                    <div className="bg-white rounded-lg shadow p-12 text-center max-w-lg mx-auto">
+            <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gray-100 flex items-center justify-center">
+              <svg
+                className="w-8 h-8 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"
+                />
+              </svg>
+            </div>
             <h2 className="text-xl font-semibold text-gray-900 mb-2">
               No applications yet
             </h2>
-            <p className="text-gray-500 mb-6">
-              Upload a spreadsheet and turn it into a real application.
+            <p className="text-gray-500 mb-6 max-w-sm mx-auto">
+              Upload a spreadsheet and we'll turn it into a clean,
+              easy-to-understand application in seconds.
             </p>
             <Link
               href="/dashboard/create"
-              className="inline-block bg-black text-white px-4 py-2 rounded hover:bg-gray-800"
+              className="inline-block bg-black text-white px-5 py-2.5 rounded-md hover:bg-gray-800 transition"
             >
               Create your first app
             </Link>
