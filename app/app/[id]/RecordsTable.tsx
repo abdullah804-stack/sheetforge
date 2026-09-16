@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import RecordCard from "./RecordCard";
 
 interface FieldDef {
   name: string;
@@ -13,10 +14,12 @@ interface FieldDef {
   visible: boolean;
 }
 
-interface DataRecord {
+interface Record_ {
   id: string;
   data: Record<string, any>;
 }
+
+type ViewMode = "grid" | "list";
 
 export default function RecordsTable({
   applicationId,
@@ -27,20 +30,21 @@ export default function RecordsTable({
   applicationId: string;
   entityName: string;
   fields: FieldDef[];
-  initialRecords: DataRecord[];
+  initialRecords: Record_[];
 }) {
-  const [records, setRecords] = useState<DataRecord[]>(initialRecords);
+  const [records, setRecords] = useState<Record_[]>(initialRecords);
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [view, setView] = useState<ViewMode>("grid");
 
   const [formOpen, setFormOpen] = useState(false);
-  const [editingRecord, setEditingRecord] = useState<DataRecord | null>(null);
+  const [editingRecord, setEditingRecord] = useState<Record_ | null>(null);
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const [deleteConfirm, setDeleteConfirm] = useState<DataRecord | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<Record_ | null>(null);
 
   const visibleFields = fields.filter((f) => f.visible);
 
@@ -102,7 +106,7 @@ export default function RecordsTable({
     setFormOpen(true);
   }
 
-  function openEditForm(record: DataRecord) {
+  function openEditForm(record: Record_) {
     setEditingRecord(record);
     const initial: Record<string, string> = {};
     for (const f of fields) {
@@ -125,7 +129,6 @@ export default function RecordsTable({
     setSaving(true);
     setError("");
 
-    // Validate required fields
     for (const f of fields) {
       if (f.required && !formData[f.name]?.trim()) {
         setError(`${f.label} is required`);
@@ -170,10 +173,9 @@ export default function RecordsTable({
   async function handleDelete() {
     if (!deleteConfirm) return;
 
-    const res = await fetch(
-      `/api/records?recordId=${deleteConfirm.id}`,
-      { method: "DELETE" }
-    );
+    const res = await fetch(`/api/records?recordId=${deleteConfirm.id}`, {
+      method: "DELETE",
+    });
 
     if (!res.ok) {
       setError("Delete failed");
@@ -187,34 +189,87 @@ export default function RecordsTable({
 
   return (
     <div className="bg-white rounded-lg shadow">
-      <div className="p-4 border-b flex items-center justify-between gap-3">
+      {/* Toolbar */}
+      <div className="p-4 border-b flex flex-wrap items-center gap-3">
         <input
           type="text"
           placeholder="Search..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="border border-gray-300 text-gray-900 rounded px-3 py-2 text-sm w-64"
+          className="border border-gray-300 text-gray-900 rounded-md px-3 py-2 text-sm w-full sm:w-64"
         />
-        <div className="flex items-center gap-3">
-          <p className="text-sm text-gray-500">
-            {filtered.length} of {records.length}
+
+        <div className="flex items-center gap-2 ml-auto">
+          {/* Grid / List toggle */}
+          <div className="border border-gray-200 rounded-md p-0.5 flex">
+            <button
+              onClick={() => setView("grid")}
+              className={`px-2.5 py-1 text-xs rounded ${
+                view === "grid"
+                  ? "bg-gray-900 text-white"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Grid
+            </button>
+            <button
+              onClick={() => setView("list")}
+              className={`px-2.5 py-1 text-xs rounded ${
+                view === "list"
+                  ? "bg-gray-900 text-white"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              List
+            </button>
+          </div>
+
+          <p className="text-sm text-gray-500 hidden sm:block">
+            {filtered.length}
+            {filtered.length !== records.length ? ` of ${records.length}` : ""}
           </p>
+
           <button
             onClick={openAddForm}
-            className="bg-black text-white px-3 py-2 rounded text-sm hover:bg-gray-800"
+            className="bg-black text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition"
           >
-            + Add Record
+            + Add
           </button>
         </div>
       </div>
 
+      {/* Body */}
       {filtered.length === 0 ? (
-        <div className="p-12 text-center text-gray-500 text-sm">
-          {records.length === 0
-            ? "No records yet. Click + Add Record to create the first one."
-            : "No matches for your search."}
+        <div className="p-16 text-center">
+          <p className="text-sm text-gray-500 mb-4">
+            {records.length === 0
+              ? "No records yet."
+              : "No matches for your search."}
+          </p>
+          {records.length === 0 && (
+            <button
+              onClick={openAddForm}
+              className="bg-black text-white px-4 py-2 rounded-md text-sm hover:bg-gray-800 transition"
+            >
+              Add your first record
+            </button>
+          )}
+        </div>
+      ) : view === "grid" ? (
+        /* GRID VIEW */
+        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {filtered.map((r) => (
+            <RecordCard
+              key={r.id}
+              record={r}
+              fields={fields}
+              onEdit={() => openEditForm(r)}
+              onDelete={() => setDeleteConfirm(r)}
+            />
+          ))}
         </div>
       ) : (
+        /* LIST VIEW */
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">
@@ -279,13 +334,13 @@ export default function RecordsTable({
             <form onSubmit={handleSave}>
               <div className="p-6 border-b">
                 <h2 className="text-lg font-semibold text-gray-900">
-                  {editingRecord ? "Edit Record" : "Add Record"}
+                  {editingRecord ? "Edit record" : "Add record"}
                 </h2>
               </div>
 
-              <div className="p-6 grid grid-cols-2 gap-4">
+              <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {error && (
-                  <div className="col-span-2 bg-red-50 text-red-600 p-3 rounded text-sm">
+                  <div className="sm:col-span-2 bg-red-50 text-red-600 p-3 rounded text-sm">
                     {error}
                   </div>
                 )}
@@ -293,7 +348,7 @@ export default function RecordsTable({
                 {fields.map((f) => (
                   <div
                     key={f.name}
-                    className={f.type === "longtext" ? "col-span-2" : ""}
+                    className={f.type === "longtext" ? "sm:col-span-2" : ""}
                   >
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       {f.label}
@@ -312,7 +367,7 @@ export default function RecordsTable({
                           })
                         }
                         rows={3}
-                        className="w-full border border-gray-300 text-gray-900 rounded px-3 py-2"
+                        className="w-full border border-gray-300 text-gray-900 rounded-md px-3 py-2 focus:ring-2 focus:ring-black focus:border-black outline-none"
                       />
                     ) : f.type === "boolean" ? (
                       <select
@@ -323,7 +378,7 @@ export default function RecordsTable({
                             [f.name]: e.target.value,
                           })
                         }
-                        className="w-full border border-gray-300 text-gray-900 rounded px-3 py-2"
+                        className="w-full border border-gray-300 text-gray-900 rounded-md px-3 py-2 focus:ring-2 focus:ring-black focus:border-black outline-none"
                       >
                         <option value="">—</option>
                         <option value="true">Yes</option>
@@ -332,7 +387,9 @@ export default function RecordsTable({
                     ) : (
                       <input
                         type={
-                          f.type === "integer" || f.type === "decimal" || f.type === "currency"
+                          f.type === "integer" ||
+                          f.type === "decimal" ||
+                          f.type === "currency"
                             ? "number"
                             : f.type === "date" || f.type === "datetime"
                               ? "date"
@@ -340,7 +397,11 @@ export default function RecordsTable({
                                 ? "email"
                                 : "text"
                         }
-                        step={f.type === "decimal" || f.type === "currency" ? "0.01" : undefined}
+                        step={
+                          f.type === "decimal" || f.type === "currency"
+                            ? "0.01"
+                            : undefined
+                        }
                         value={formData[f.name] ?? ""}
                         onChange={(e) =>
                           setFormData({
@@ -348,7 +409,7 @@ export default function RecordsTable({
                             [f.name]: e.target.value,
                           })
                         }
-                        className="w-full border border-gray-300 text-gray-900 rounded px-3 py-2"
+                        className="w-full border border-gray-300 text-gray-900 rounded-md px-3 py-2 focus:ring-2 focus:ring-black focus:border-black outline-none"
                       />
                     )}
                   </div>
@@ -359,16 +420,20 @@ export default function RecordsTable({
                 <button
                   type="button"
                   onClick={closeForm}
-                  className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded"
+                  className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="bg-black text-white px-4 py-2 rounded text-sm hover:bg-gray-800 disabled:opacity-50"
+                  className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition disabled:opacity-50"
                 >
-                  {saving ? "Saving..." : editingRecord ? "Save Changes" : "Create Record"}
+                  {saving
+                    ? "Saving..."
+                    : editingRecord
+                      ? "Save changes"
+                      : "Create record"}
                 </button>
               </div>
             </form>
@@ -381,21 +446,21 @@ export default function RecordsTable({
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-2">
-              Delete Record?
+              Delete this record?
             </h2>
             <p className="text-sm text-gray-500 mb-6">
-              This action cannot be undone.
+              This can't be undone.
             </p>
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setDeleteConfirm(null)}
-                className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded"
+                className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md transition"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDelete}
-                className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700"
+                className="bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-700 transition"
               >
                 Delete
               </button>
