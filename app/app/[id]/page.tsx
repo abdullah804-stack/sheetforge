@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import DownloadButton from "./DownloadButton";
 import Charts from "./Charts";
 import { computeChartData } from "@/lib/charts/compute";
 import { generateSummary } from "@/lib/summary/generate";
@@ -85,7 +86,7 @@ export default async function AppRuntimePage({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Top bar */}
+            {/* Top bar */}
       <div className="bg-white border-b">
         <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
           <div>
@@ -96,12 +97,15 @@ export default async function AppRuntimePage({
               {definition.primaryEntity.name}
             </p>
           </div>
-          <Link
-            href={`/dashboard/app/${application.id}`}
-            className="text-sm text-gray-500 hover:text-gray-900"
-          >
-            Edit definition →
-          </Link>
+          <div className="flex items-center gap-3">
+            <DownloadButton applicationId={application.id} />
+            <Link
+              href={`/dashboard/app/${application.id}`}
+              className="text-sm text-gray-500 hover:text-gray-900"
+            >
+              Edit definition →
+            </Link>
+          </div>
         </div>
       </div>
 

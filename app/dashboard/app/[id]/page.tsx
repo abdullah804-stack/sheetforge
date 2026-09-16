@@ -249,17 +249,25 @@ export default function AppDetailPage() {
                 Created {new Date(application.createdAt).toLocaleDateString()}
               </p>
             </div>
-            <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3">
               <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600">
                 {application.status}
               </span>
               {definition && (
-                <Link
-                  href={`/app/${application.id}`}
-                  className="bg-black text-white px-4 py-2 rounded text-sm hover:bg-gray-800"
-                >
-                  Open Application →
-                </Link>
+                <>
+                  <a
+                    href={`/api/applications/export?applicationId=${application.id}&format=csv`}
+                    className="text-sm border border-gray-300 rounded px-3 py-2 hover:bg-gray-50"
+                  >
+                    Export CSV
+                  </a>
+                  <Link
+                    href={`/app/${application.id}`}
+                    className="bg-black text-white px-4 py-2 rounded text-sm hover:bg-gray-800"
+                  >
+                    Open Application →
+                  </Link>
+                </>
               )}
             </div>
           </div>
