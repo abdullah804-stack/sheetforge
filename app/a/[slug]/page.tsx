@@ -5,15 +5,21 @@ import { computeChartData } from "@/lib/charts/compute";
 import { describeChart } from "@/lib/charts/insight";
 import { generateSummary } from "@/lib/summary/generate";
 import Charts from "@/app/app/[id]/Charts";
+import Pagination from "@/app/app/[id]/Pagination";
 
 export const dynamic = "force-dynamic";
 
 export default async function PublicAppPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ page?: string }>;
 }) {
   const { slug } = await params;
+  const { page: pageParam } = await searchParams;
+  const currentPage = Math.max(1, parseInt(pageParam || "1", 10) || 1);
+  const PAGE_SIZE = 25;
 
   const application = await prisma.application.findUnique({
     where: { slug },
@@ -28,30 +34,40 @@ export default async function PublicAppPage({
 
   const entityName = definition.primaryEntity.name;
 
-  const records = await prisma.record.findMany({
+  // Fetch all records — for summary, metrics, charts, and total count
+  const allRecords = await prisma.record.findMany({
     where: { applicationId: application.id, entityName },
     orderBy: { createdAt: "asc" },
   });
 
-  const recordObjects = records.map((r) => ({
+  const allRecordObjects = allRecords.map((r) => ({
     id: r.id,
     data: r.data as Record<string, any>,
   }));
 
+  const totalCount = allRecordObjects.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+
+  // Slice the current page
+  const records = allRecordObjects.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
   const summarySentences = generateSummary(
-    recordObjects,
+    allRecordObjects,
     definition.primaryEntity,
     application.name
   );
 
   const metrics = computeMetrics(
-    recordObjects,
+    allRecordObjects,
     definition.dashboard?.metrics || []
   );
 
   const chartDefs = (definition.charts || []).slice(0, 3);
   const chartInfo = chartDefs.map((chart: any) => {
-    const data = computeChartData(recordObjects, chart);
+    const data = computeChartData(allRecordObjects, chart);
     const { purpose, insight } = describeChart(chart, data);
     return { chart, data, purpose, insight };
   });
@@ -66,8 +82,8 @@ export default async function PublicAppPage({
               {application.name}
             </h1>
             <p className="text-xs text-gray-500">
-              {records.length} {records.length === 1 ? "record" : "records"} ·
-              View only
+              {totalCount} {totalCount === 1 ? "record" : "records"} · View
+              only
             </p>
           </div>
         </div>
@@ -122,11 +138,20 @@ export default async function PublicAppPage({
         {/* Charts */}
         {chartInfo.length > 0 && <Charts charts={chartInfo} />}
 
-        {/* Records */}
+        {/* Records — paginated */}
         <PublicRecordsTable
           fields={definition.primaryEntity.fields}
-          records={recordObjects}
+          records={records}
         />
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            basePath={`/a/${slug}`}
+          />
+        )}
       </div>
     </div>
   );

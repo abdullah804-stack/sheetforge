@@ -38,6 +38,9 @@ export default function RecordsTable({
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [view, setView] = useState<ViewMode>("grid");
 
+  const [filters, setFilters] = useState<Record<string, string>>({});
+  const [filterOpen, setFilterOpen] = useState(false);
+
   const [formOpen, setFormOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<Record_ | null>(null);
   const [formData, setFormData] = useState<Record<string, string>>({});
@@ -47,10 +50,12 @@ export default function RecordsTable({
   const [deleteConfirm, setDeleteConfirm] = useState<Record_ | null>(null);
 
   const visibleFields = fields.filter((f) => f.visible);
+  const activeFilterCount = Object.values(filters).filter(Boolean).length;
 
   const filtered = useMemo(() => {
     let result = records;
 
+    // Search across searchable fields
     if (search.trim()) {
       const q = search.toLowerCase();
       const searchable = fields.filter((f) => f.searchable);
@@ -65,6 +70,16 @@ export default function RecordsTable({
       );
     }
 
+    // Apply field filters (AND)
+    for (const [key, value] of Object.entries(filters)) {
+      if (!value) continue;
+      result = result.filter(
+        (r) =>
+          String(r.data[key] ?? "").toLowerCase() === value.toLowerCase()
+      );
+    }
+
+    // Sort
     if (sortField) {
       result = [...result].sort((a, b) => {
         const av = a.data[sortField];
@@ -88,7 +103,7 @@ export default function RecordsTable({
     }
 
     return result;
-  }, [records, search, sortField, sortDir, fields]);
+  }, [records, search, sortField, sortDir, filters, fields]);
 
   function handleSort(field: string) {
     if (sortField === field) {
@@ -97,6 +112,10 @@ export default function RecordsTable({
       setSortField(field);
       setSortDir("asc");
     }
+  }
+
+  function clearFilters() {
+    setFilters({});
   }
 
   function openAddForm() {
@@ -196,11 +215,26 @@ export default function RecordsTable({
           placeholder="Search..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="border border-gray-300 text-gray-900 rounded-md px-3 py-2 text-sm w-full sm:w-64"
+          className="border border-gray-300 text-gray-900 rounded-md px-3 py-2 text-sm w-full sm:w-56"
         />
 
+        <button
+          onClick={() => setFilterOpen(!filterOpen)}
+          className={`px-3 py-2 rounded-md text-sm border transition ${
+            activeFilterCount > 0
+              ? "border-black bg-black text-white"
+              : "border-gray-300 text-gray-700 hover:bg-gray-50"
+          }`}
+        >
+          Filters
+          {activeFilterCount > 0 && (
+            <span className="ml-1.5 text-xs opacity-90">
+              ({activeFilterCount})
+            </span>
+          )}
+        </button>
+
         <div className="flex items-center gap-2 ml-auto">
-          {/* Grid / List toggle */}
           <div className="border border-gray-200 rounded-md p-0.5 flex">
             <button
               onClick={() => setView("grid")}
@@ -238,13 +272,47 @@ export default function RecordsTable({
         </div>
       </div>
 
+      {/* Filter panel */}
+      {filterOpen && (
+        <div className="p-4 border-b bg-gray-50">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {fields
+              .filter(
+                (f) =>
+                  f.filterable || f.type === "text" || f.type === "select"
+              )
+              .map((f) => (
+                <FilterField
+                  key={f.name}
+                  field={f}
+                  value={filters[f.name] ?? ""}
+                  onChange={(v) =>
+                    setFilters({ ...filters, [f.name]: v })
+                  }
+                  records={records}
+                />
+              ))}
+          </div>
+          {activeFilterCount > 0 && (
+            <button
+              onClick={clearFilters}
+              className="mt-3 text-xs text-gray-500 hover:text-gray-900 underline"
+            >
+              Clear all filters
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Body */}
       {filtered.length === 0 ? (
         <div className="p-16 text-center">
           <p className="text-sm text-gray-500 mb-4">
             {records.length === 0
               ? "No records yet."
-              : "No matches for your search."}
+              : activeFilterCount > 0 || search.trim()
+                ? "No records match your filters."
+                : "No matches for your search."}
           </p>
           {records.length === 0 && (
             <button
@@ -252,6 +320,17 @@ export default function RecordsTable({
               className="bg-black text-white px-4 py-2 rounded-md text-sm hover:bg-gray-800 transition"
             >
               Add your first record
+            </button>
+          )}
+          {(activeFilterCount > 0 || search.trim()) && (
+            <button
+              onClick={() => {
+                clearFilters();
+                setSearch("");
+              }}
+              className="text-xs text-gray-500 hover:text-gray-900 underline"
+            >
+              Clear filters and search
             </button>
           )}
         </div>
@@ -263,6 +342,7 @@ export default function RecordsTable({
               key={r.id}
               record={r}
               fields={fields}
+              applicationId={applicationId}
               onEdit={() => openEditForm(r)}
               onDelete={() => setDeleteConfirm(r)}
             />
@@ -467,6 +547,67 @@ export default function RecordsTable({
             </div>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* FilterField — renders a dropdown or text input based on options     */
+/* ------------------------------------------------------------------ */
+
+function FilterField({
+  field,
+  value,
+  onChange,
+  records,
+}: {
+  field: FieldDef;
+  value: string;
+  onChange: (v: string) => void;
+  records: Record_[];
+}) {
+  const options = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of records) {
+      const v = r.data[field.name];
+      if (v !== null && v !== undefined && v !== "") {
+        set.add(String(v));
+      }
+    }
+    return Array.from(set).sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true })
+    );
+  }, [records, field.name]);
+
+  const tooMany = options.length > 15;
+
+  return (
+    <div>
+      <label className="block text-xs font-medium text-gray-600 mb-1">
+        {field.label}
+      </label>
+      {tooMany ? (
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Type to filter..."
+          className="w-full border border-gray-300 text-gray-900 rounded-md px-3 py-1.5 text-sm"
+        />
+      ) : (
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full border border-gray-300 text-gray-900 rounded-md px-3 py-1.5 text-sm"
+        >
+          <option value="">All</option>
+          {options.map((o) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
+        </select>
       )}
     </div>
   );

@@ -8,11 +8,14 @@ import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import RecordsTable from "./RecordsTable";
+import Pagination from "./Pagination";
 
 export default async function AppRuntimePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ page?: string }>;
 }) {
   const session = await auth();
 
@@ -21,6 +24,9 @@ export default async function AppRuntimePage({
   }
 
   const { id } = await params;
+  const { page: pageParam } = await searchParams;
+  const currentPage = Math.max(1, parseInt(pageParam || "1", 10) || 1);
+  const PAGE_SIZE = 25;
 
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
@@ -60,31 +66,41 @@ export default async function AppRuntimePage({
 
   const entityName = definition.primaryEntity.name;
 
-  const records = await prisma.record.findMany({
+  // Fetch all records — used for summary, metrics, charts, and total count
+  const allRecords = await prisma.record.findMany({
     where: { applicationId: application.id, entityName },
     orderBy: { createdAt: "asc" },
   });
 
-  const recordObjects = records.map((r) => ({
+  const allRecordObjects = allRecords.map((r) => ({
     id: r.id,
     data: r.data as Record<string, any>,
   }));
 
+  const totalCount = allRecordObjects.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+
+  // Slice the current page from the in-memory list
+  const records = allRecordObjects.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
   const summarySentences = generateSummary(
-    recordObjects,
+    allRecordObjects,
     definition.primaryEntity,
     application.name
   );
 
   const metrics = computeMetrics(
-    recordObjects,
+    allRecordObjects,
     definition.dashboard?.metrics || [],
     definition
   );
 
   const chartDefs = (definition.charts || []).slice(0, 3);
   const chartInfo = chartDefs.map((chart: any) => {
-    const data = computeChartData(recordObjects, chart);
+    const data = computeChartData(allRecordObjects, chart);
     const { purpose, insight } = describeChart(chart, data);
     return { chart, data, purpose, insight };
   });
@@ -99,7 +115,7 @@ export default async function AppRuntimePage({
               {application.name}
             </h1>
             <p className="text-xs text-gray-500">
-              {records.length} {records.length === 1 ? "record" : "records"}
+              {totalCount} {totalCount === 1 ? "record" : "records"}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -158,13 +174,22 @@ export default async function AppRuntimePage({
         {/* Charts */}
         {chartInfo.length > 0 && <Charts charts={chartInfo} />}
 
-        {/* Records */}
+        {/* Records — paginated */}
         <RecordsTable
           applicationId={application.id}
           entityName={entityName}
           fields={definition.primaryEntity.fields}
-          initialRecords={recordObjects}
+          initialRecords={records}
         />
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            basePath={`/app/${application.id}`}
+          />
+        )}
       </div>
     </div>
   );
@@ -177,7 +202,6 @@ function computeMetrics(
 ): { label: string; value: string }[] {
   const results: { label: string; value: string }[] = [];
 
-  // Always include total count
   results.push({ label: "Total Records", value: records.length.toString() });
 
   for (const metric of metricDefs || []) {

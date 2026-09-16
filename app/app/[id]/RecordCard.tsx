@@ -1,5 +1,5 @@
 "use client";
-
+import Link from "next/link";
 interface FieldDef {
   name: string;
   label: string;
@@ -15,11 +15,13 @@ interface Record_ {
 export default function RecordCard({
   record,
   fields,
+  applicationId,
   onEdit,
   onDelete,
 }: {
   record: Record_;
   fields: FieldDef[];
+  applicationId: string;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -82,19 +84,27 @@ export default function RecordCard({
       )}
 
       {/* Actions */}
-      <div className="flex items-center justify-between pt-3 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition">
-        <button
-          onClick={onEdit}
+            <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                <Link
+          href={`/app/${applicationId}/record/${record.id}`}
           className="text-xs text-gray-600 hover:text-gray-900 font-medium"
         >
-          Edit
-        </button>
-        <button
-          onClick={onDelete}
-          className="text-xs text-gray-400 hover:text-red-600"
-        >
-          Delete
-        </button>
+          View details
+        </Link>
+        <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition">
+          <button
+            onClick={onEdit}
+            className="text-xs text-gray-600 hover:text-gray-900"
+          >
+            Edit
+          </button>
+          <button
+            onClick={onDelete}
+            className="text-xs text-gray-400 hover:text-red-600"
+          >
+            Delete
+          </button>
+        </div>
       </div>
     </div>
   );
