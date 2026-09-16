@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { generateSummary } from "@/lib/summary/generate";
 import PublicRecordsTable from "./PublicRecordsTable";
-import Charts from "@/app/app/[id]/Charts";
 import { computeChartData } from "@/lib/charts/compute";
+import { describeChart } from "@/lib/charts/insight";
+import { generateSummary } from "@/lib/summary/generate";
+import Charts from "@/app/app/[id]/Charts";
 
 export const dynamic = "force-dynamic";
 
@@ -32,10 +33,16 @@ export default async function PublicAppPage({
     orderBy: { createdAt: "asc" },
   });
 
-    const recordObjects = records.map((r) => ({
+  const recordObjects = records.map((r) => ({
     id: r.id,
     data: r.data as Record<string, any>,
   }));
+
+  const summarySentences = generateSummary(
+    recordObjects,
+    definition.primaryEntity,
+    application.name
+  );
 
   const metrics = computeMetrics(
     recordObjects,
@@ -43,32 +50,33 @@ export default async function PublicAppPage({
   );
 
   const chartDefs = (definition.charts || []).slice(0, 3);
-  const chartData = chartDefs.map((c: any) => computeChartData(recordObjects, c));
-
-    const summarySentences = generateSummary(
-    recordObjects,
-    definition.primaryEntity,
-    application.name
-  );
+  const chartInfo = chartDefs.map((chart: any) => {
+    const data = computeChartData(recordObjects, chart);
+    const { purpose, insight } = describeChart(chart, data);
+    return { chart, data, purpose, insight };
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top bar */}
       <div className="bg-white border-b">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center">
           <div>
             <h1 className="text-xl font-bold text-gray-900">
               {application.name}
             </h1>
-                        <p className="text-xs text-gray-500">
-              {records.length} {records.length === 1 ? "record" : "records"} · View only
+            <p className="text-xs text-gray-500">
+              {records.length} {records.length === 1 ? "record" : "records"} ·
+              View only
             </p>
           </div>
         </div>
       </div>
 
+      {/* Content */}
       <div className="max-w-6xl mx-auto p-6">
-                        {summarySentences.length > 0 && (
+        {/* Summary */}
+        {summarySentences.length > 0 && (
           <div className="mb-6 bg-white rounded-lg shadow p-6">
             <div className="flex items-start gap-3">
               <div className="w-1 self-stretch bg-black rounded-full mt-1"></div>
@@ -78,7 +86,10 @@ export default async function PublicAppPage({
                 </p>
                 <div className="space-y-1">
                   {summarySentences.map((s, i) => (
-                    <p key={i} className="text-sm text-gray-700 leading-relaxed">
+                    <p
+                      key={i}
+                      className="text-sm text-gray-700 leading-relaxed"
+                    >
                       {s}
                     </p>
                   ))}
@@ -87,9 +98,9 @@ export default async function PublicAppPage({
             </div>
           </div>
         )}
-                
-                
-                        <div
+
+        {/* Metrics */}
+        <div
           className={`mb-6 grid gap-4 grid-cols-2 ${
             metrics.length >= 4
               ? "sm:grid-cols-4"
@@ -108,16 +119,13 @@ export default async function PublicAppPage({
           ))}
         </div>
 
-        {chartDefs.length > 0 && (
-          <Charts charts={chartDefs} dataByChart={chartData} />
-        )}
+        {/* Charts */}
+        {chartInfo.length > 0 && <Charts charts={chartInfo} />}
 
+        {/* Records */}
         <PublicRecordsTable
           fields={definition.primaryEntity.fields}
-          records={records.map((r) => ({
-            id: r.id,
-            data: r.data as Record<string, any>,
-          }))}
+          records={recordObjects}
         />
       </div>
     </div>
@@ -129,21 +137,30 @@ function computeMetrics(
   metricDefs: any[]
 ): { label: string; value: string }[] {
   const results: { label: string; value: string }[] = [];
+
   results.push({ label: "Total Records", value: records.length.toString() });
 
   for (const metric of metricDefs || []) {
     if (metric.type === "count") {
-      results.push({ label: metric.label, value: records.length.toString() });
+      results.push({
+        label: metric.label,
+        value: records.length.toString(),
+      });
       continue;
     }
+
     if (metric.type === "sum" && metric.field) {
       const sum = records.reduce((acc, r) => {
         const v = Number(r.data[metric.field]);
         return acc + (isNaN(v) ? 0 : v);
       }, 0);
-      results.push({ label: metric.label, value: formatNumber(sum) });
+      results.push({
+        label: metric.label,
+        value: formatNumber(sum),
+      });
       continue;
     }
+
     if (metric.type === "average" && metric.field) {
       const valid = records
         .map((r) => Number(r.data[metric.field]))
@@ -151,10 +168,14 @@ function computeMetrics(
       const avg = valid.length
         ? valid.reduce((a, b) => a + b, 0) / valid.length
         : 0;
-      results.push({ label: metric.label, value: formatNumber(avg) });
+      results.push({
+        label: metric.label,
+        value: formatNumber(avg),
+      });
       continue;
     }
   }
+
   return results.slice(0, 4);
 }
 

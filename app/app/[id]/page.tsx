@@ -1,7 +1,8 @@
 import { auth } from "@/auth";
 import DownloadButton from "./DownloadButton";
-import Charts from "./Charts";
+import { describeChart } from "@/lib/charts/insight";
 import { computeChartData } from "@/lib/charts/compute";
+import Charts from "./Charts";
 import { generateSummary } from "@/lib/summary/generate";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -64,10 +65,16 @@ export default async function AppRuntimePage({
     orderBy: { createdAt: "asc" },
   });
 
-    const recordObjects = records.map((r) => ({
+  const recordObjects = records.map((r) => ({
     id: r.id,
     data: r.data as Record<string, any>,
   }));
+
+  const summarySentences = generateSummary(
+    recordObjects,
+    definition.primaryEntity,
+    application.name
+  );
 
   const metrics = computeMetrics(
     recordObjects,
@@ -76,30 +83,28 @@ export default async function AppRuntimePage({
   );
 
   const chartDefs = (definition.charts || []).slice(0, 3);
-  const chartData = chartDefs.map((c: any) => computeChartData(recordObjects, c));
-
-    const summarySentences = generateSummary(
-    recordObjects,
-    definition.primaryEntity,
-    application.name
-  );
+  const chartInfo = chartDefs.map((chart: any) => {
+    const data = computeChartData(recordObjects, chart);
+    const { purpose, insight } = describeChart(chart, data);
+    return { chart, data, purpose, insight };
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
-            {/* Top bar */}
-            <div className="bg-white border-b">
+      {/* Top bar */}
+      <div className="bg-white border-b">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center">
           <div>
             <h1 className="text-xl font-bold text-gray-900">
               {application.name}
             </h1>
-                        <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500">
               {records.length} {records.length === 1 ? "record" : "records"}
             </p>
           </div>
           <div className="flex items-center gap-3">
             <DownloadButton applicationId={application.id} />
-                        <Link
+            <Link
               href={`/dashboard/app/${application.id}`}
               className="text-sm text-gray-500 hover:text-gray-900"
             >
@@ -111,7 +116,8 @@ export default async function AppRuntimePage({
 
       {/* Content */}
       <div className="max-w-6xl mx-auto p-6">
-                        {summarySentences.length > 0 && (
+        {/* Summary */}
+        {summarySentences.length > 0 && (
           <div className="mb-6 bg-white rounded-lg shadow p-6">
             <div className="flex items-start gap-3">
               <div className="w-1 self-stretch bg-black rounded-full mt-1"></div>
@@ -121,7 +127,10 @@ export default async function AppRuntimePage({
                 </p>
                 <div className="space-y-1">
                   {summarySentences.map((s, i) => (
-                    <p key={i} className="text-sm text-gray-700 leading-relaxed">
+                    <p
+                      key={i}
+                      className="text-sm text-gray-700 leading-relaxed"
+                    >
                       {s}
                     </p>
                   ))}
@@ -130,8 +139,9 @@ export default async function AppRuntimePage({
             </div>
           </div>
         )}
-                
-                        <div
+
+        {/* Metrics */}
+        <div
           className={`mb-6 grid gap-4 grid-cols-2 ${
             metrics.length >= 4
               ? "sm:grid-cols-4"
@@ -145,18 +155,15 @@ export default async function AppRuntimePage({
           ))}
         </div>
 
-        {chartDefs.length > 0 && (
-          <Charts charts={chartDefs} dataByChart={chartData} />
-        )}
+        {/* Charts */}
+        {chartInfo.length > 0 && <Charts charts={chartInfo} />}
 
+        {/* Records */}
         <RecordsTable
           applicationId={application.id}
           entityName={entityName}
           fields={definition.primaryEntity.fields}
-          initialRecords={records.map((r) => ({
-            id: r.id,
-            data: r.data as Record<string, any>,
-          }))}
+          initialRecords={recordObjects}
         />
       </div>
     </div>
