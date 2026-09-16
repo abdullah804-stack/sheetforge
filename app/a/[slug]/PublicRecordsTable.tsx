@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import PublicRecordCard from "./PublicRecordCard";
 
 interface FieldDef {
   name: string;
@@ -11,21 +12,24 @@ interface FieldDef {
   sortable: boolean;
 }
 
-interface PublicRecord {
+interface Record_ {
   id: string;
   data: Record<string, any>;
 }
+
+type ViewMode = "grid" | "list";
 
 export default function PublicRecordsTable({
   fields,
   records,
 }: {
   fields: FieldDef[];
-  records: PublicRecord[];
+  records: Record_[];
 }) {
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [view, setView] = useState<ViewMode>("grid");
 
   const visibleFields = fields.filter((f) => f.visible);
 
@@ -53,10 +57,17 @@ export default function PublicRecordsTable({
         if (av == null && bv == null) return 0;
         if (av == null) return 1;
         if (bv == null) return -1;
+
         const an = Number(av);
         const bn = Number(bv);
-        const bothNum = !isNaN(an) && !isNaN(bn);
-        const cmp = bothNum ? an - bn : String(av).localeCompare(String(bv));
+        const bothNumeric = !isNaN(an) && !isNaN(bn);
+
+        let cmp: number;
+        if (bothNumeric) {
+          cmp = an - bn;
+        } else {
+          cmp = String(av).localeCompare(String(bv));
+        }
         return sortDir === "asc" ? cmp : -cmp;
       });
     }
@@ -75,24 +86,58 @@ export default function PublicRecordsTable({
 
   return (
     <div className="bg-white rounded-lg shadow">
-      <div className="p-4 border-b flex items-center justify-between gap-3">
+      {/* Toolbar */}
+      <div className="p-4 border-b flex flex-wrap items-center gap-3">
         <input
           type="text"
           placeholder="Search..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="border border-gray-300 text-gray-900 rounded px-3 py-2 text-sm w-64"
+          className="border border-gray-300 text-gray-900 rounded-md px-3 py-2 text-sm w-full sm:w-64"
         />
-        <p className="text-sm text-gray-500">
-          {filtered.length} of {records.length}
-        </p>
+
+        <div className="flex items-center gap-2 ml-auto">
+          <div className="border border-gray-200 rounded-md p-0.5 flex">
+            <button
+              onClick={() => setView("grid")}
+              className={`px-2.5 py-1 text-xs rounded ${
+                view === "grid"
+                  ? "bg-gray-900 text-white"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Grid
+            </button>
+            <button
+              onClick={() => setView("list")}
+              className={`px-2.5 py-1 text-xs rounded ${
+                view === "list"
+                  ? "bg-gray-900 text-white"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              List
+            </button>
+          </div>
+
+          <p className="text-sm text-gray-500 hidden sm:block">
+            {filtered.length}
+            {filtered.length !== records.length ? ` of ${records.length}` : ""}
+          </p>
+        </div>
       </div>
 
       {filtered.length === 0 ? (
-        <div className="p-12 text-center text-gray-500 text-sm">
+        <div className="p-16 text-center text-sm text-gray-500">
           {records.length === 0
-            ? "No records yet."
+            ? "No records to show."
             : "No matches for your search."}
+        </div>
+      ) : view === "grid" ? (
+        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {filtered.map((r) => (
+            <PublicRecordCard key={r.id} record={r} fields={fields} />
+          ))}
         </div>
       ) : (
         <div className="overflow-x-auto">
