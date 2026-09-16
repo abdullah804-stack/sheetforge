@@ -8,9 +8,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "SheetForge — Turn spreadsheets into real applications",
+  title: "SheetForge — See your spreadsheet clearly",
   description:
-    "Upload an Excel or CSV file. AI understands its structure and generates a working web app with tables, dashboards, search, and CRUD — backed by PostgreSQL.",
+    "Upload any Excel or CSV file. Get a clean view with a plain-English summary, charts, and easy editing. Share it with a link, or download it back anytime.",
 };
 
 export default function RootLayout({
