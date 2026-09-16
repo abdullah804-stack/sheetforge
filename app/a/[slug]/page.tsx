@@ -60,8 +60,8 @@ export default async function PublicAppPage({
             <h1 className="text-xl font-bold text-gray-900">
               {application.name}
             </h1>
-            <p className="text-xs text-gray-500">
-              {definition.primaryEntity.name} · Read-only
+                        <p className="text-xs text-gray-500">
+              {records.length} {records.length === 1 ? "record" : "records"} · View only
             </p>
           </div>
         </div>

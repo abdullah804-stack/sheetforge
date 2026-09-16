@@ -1,11 +1,9 @@
 "use client";
 
-import AIReasoning from "./AIReasoning";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import AnalysisResult from "./AnalysisResult";
-import DefinitionPreview from "./DefinitionPreview";
+import AIReasoning from "./AIReasoning";
 
 interface Application {
   id: string;
@@ -29,6 +27,30 @@ interface Workbook {
   parsedData?: any;
 }
 
+/**
+ * Friendly status labels.
+ */
+function friendlyStatus(s: string): { label: string; color: string } {
+  switch (s) {
+    case "DRAFT":
+      return { label: "Not started", color: "bg-gray-100 text-gray-600" };
+    case "UPLOADED":
+      return { label: "File uploaded", color: "bg-gray-100 text-gray-600" };
+    case "PARSED":
+      return { label: "File read", color: "bg-blue-50 text-blue-700" };
+    case "GENERATED":
+      return { label: "Built", color: "bg-blue-50 text-blue-700" };
+    case "READY":
+      return { label: "Ready to use", color: "bg-green-50 text-green-700" };
+    case "PUBLISHED":
+      return { label: "Published", color: "bg-green-50 text-green-700" };
+    case "PARSE_FAILED":
+      return { label: "Could not read file", color: "bg-red-50 text-red-700" };
+    default:
+      return { label: s, color: "bg-gray-100 text-gray-600" };
+  }
+}
+
 export default function AppDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -46,6 +68,7 @@ export default function AppDetailPage() {
   const [dragging, setDragging] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -59,7 +82,8 @@ export default function AppDetailPage() {
       setApplication(data.application);
       setWorkbook(data.workbook);
       if (data.workbook?.parsedData) setAnalysis(data.workbook.parsedData);
-      if (data.application?.definition) setDefinition(data.application.definition);
+      if (data.application?.definition)
+        setDefinition(data.application.definition);
       setLoading(false);
     }
     load();
@@ -114,7 +138,7 @@ export default function AppDetailPage() {
     });
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error || "Analysis failed");
+      setError(data.error || "Could not read the file");
       setAnalyzing(false);
       return;
     }
@@ -134,7 +158,7 @@ export default function AppDetailPage() {
     });
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error || "Generation failed");
+      setError(data.error || "Could not build the app");
       setGenerating(false);
       return;
     }
@@ -160,7 +184,7 @@ export default function AppDetailPage() {
 
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error || "Publish failed");
+      setError(data.error || "Could not publish");
       setPublishing(false);
       return;
     }
@@ -183,7 +207,7 @@ export default function AppDetailPage() {
 
     if (!res.ok) {
       const data = await res.json();
-      setError(data.error || "Unpublish failed");
+      setError(data.error || "Could not unpublish");
       setPublishing(false);
       return;
     }
@@ -212,8 +236,11 @@ export default function AppDetailPage() {
     return (
       <div className="min-h-screen bg-gray-50 p-8">
         <div className="max-w-3xl mx-auto">
-          <Link href="/dashboard" className="text-sm text-gray-500 mb-6 inline-block">
-            ← Back to dashboard
+          <Link
+            href="/dashboard"
+            className="text-sm text-gray-500 mb-6 inline-block"
+          >
+            ← Back
           </Link>
           <div className="bg-white rounded-lg shadow p-8 text-center">
             <p className="text-red-600">{error || "Application not found"}</p>
@@ -227,6 +254,10 @@ export default function AppDetailPage() {
 
   const isPublished =
     application.visibility === "PUBLIC" && !!application.slug;
+  const status = friendlyStatus(application.status);
+  const hasFile = !!workbook;
+  const hasAnalysis = !!analysis;
+  const hasDefinition = !!definition;
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -235,224 +266,334 @@ export default function AppDetailPage() {
           href="/dashboard"
           className="text-sm text-gray-500 hover:text-gray-900 mb-6 inline-block"
         >
-          ← Back to dashboard
+          ← Back
         </Link>
 
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow p-8 mb-6">
-          <div className="flex justify-between items-start mb-4">
+        {/* ============================================ */}
+        {/* BLOCK 1 — Header + Actions                   */}
+        {/* ============================================ */}
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-gray-900">
                 {application.name}
               </h1>
-              <p className="text-gray-500 text-sm mt-1">
-                Created {new Date(application.createdAt).toLocaleDateString()}
-              </p>
-            </div>
-                        <div className="flex items-center gap-3">
-              <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-600">
-                {application.status}
-              </span>
-              {definition && (
-                <>
-                  <a
-                    href={`/api/applications/export?applicationId=${application.id}&format=csv`}
-                    className="text-sm border border-gray-300 rounded px-3 py-2 hover:bg-gray-50"
-                  >
-                    Export CSV
-                  </a>
-                  <Link
-                    href={`/app/${application.id}`}
-                    className="bg-black text-white px-4 py-2 rounded text-sm hover:bg-gray-800"
-                  >
-                    Open Application →
-                  </Link>
-                </>
-              )}
+              <div className="flex items-center gap-2 mt-1.5">
+                <span
+                  className={`text-xs px-2 py-0.5 rounded font-medium ${status.color}`}
+                >
+                  {status.label}
+                </span>
+                <span className="text-xs text-gray-400">
+                  Created{" "}
+                  {new Date(application.createdAt).toLocaleDateString()}
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Publish panel */}
-          {definition && (
-            <div className="border-t pt-6 mt-2">
-              {isPublished ? (
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                    <span className="text-sm font-medium text-green-700">
-                      Published
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      readOnly
-                      value={`${typeof window !== "undefined" ? window.location.origin : ""}/a/${application.slug}`}
-                      className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm bg-gray-50 text-gray-700"
-                    />
-                    <button
-                      onClick={copyLink}
-                      className="bg-black text-white px-4 py-2 rounded text-sm hover:bg-gray-800"
-                    >
-                      {copied ? "Copied" : "Copy"}
-                    </button>
-                    <a
-                      href={`/a/${application.slug}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="border border-gray-300 px-4 py-2 rounded text-sm hover:bg-gray-50"
-                    >
-                      Open
-                    </a>
-                  </div>
-                  <button
-                    onClick={handleUnpublish}
-                    disabled={publishing}
-                    className="text-xs text-gray-500 hover:text-red-600 mt-3"
-                  >
-                    Unpublish
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      Share this application
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Anyone with the link can view (read-only).
-                    </p>
-                  </div>
+          {/* Primary actions — only show what's available */}
+          <div className="flex flex-wrap items-center gap-2">
+            {hasDefinition && (
+              <>
+                <Link
+                  href={`/app/${application.id}`}
+                  className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition"
+                >
+                  Open app →
+                </Link>
+                <a
+                  href={`/api/applications/export?applicationId=${application.id}&format=csv`}
+                  className="border border-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm hover:bg-gray-50 transition"
+                >
+                  Download
+                </a>
+                {!isPublished ? (
                   <button
                     onClick={handlePublish}
                     disabled={publishing}
-                    className="bg-black text-white px-4 py-2 rounded text-sm hover:bg-gray-800 disabled:opacity-50"
+                    className="border border-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm hover:bg-gray-50 transition disabled:opacity-50"
                   >
-                    {publishing ? "Publishing..." : "Publish"}
+                    {publishing ? "Publishing..." : "Share"}
                   </button>
-                </div>
-              )}
+                ) : (
+                  <button
+                    onClick={copyLink}
+                    className="border border-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm hover:bg-gray-50 transition"
+                  >
+                    {copied ? "✓ Link copied" : "Copy share link"}
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Publish info — only when published */}
+          {isPublished && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <p className="text-xs text-gray-500 mb-2">Public link</p>
+              <div className="flex items-center gap-2">
+                <input
+                  readOnly
+                  value={`${typeof window !== "undefined" ? window.location.origin : ""}/a/${application.slug}`}
+                  className="flex-1 border border-gray-200 rounded px-3 py-1.5 text-xs bg-gray-50 text-gray-600"
+                />
+                <a
+                  href={`/a/${application.slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-gray-500 hover:text-gray-900 underline"
+                >
+                  Open
+                </a>
+                <button
+                  onClick={handleUnpublish}
+                  disabled={publishing}
+                  className="text-xs text-gray-500 hover:text-red-600"
+                >
+                  Unpublish
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Error */}
+          {error && (
+            <div className="mt-4 bg-red-50 text-red-600 p-3 rounded text-sm">
+              {error}
             </div>
           )}
         </div>
 
-        {/* Spreadsheet section */}
-        {workbook ? (
-          <div className="bg-white rounded-lg shadow p-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Uploaded Spreadsheet
-            </h2>
+        {/* ============================================ */}
+        {/* BLOCK 2 — File + Progress                    */}
+        {/* ============================================ */}
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          {!hasFile ? (
+            <>
+              <h2 className="text-base font-semibold text-gray-900 mb-1">
+                Add your first file
+              </h2>
+              <p className="text-sm text-gray-500 mb-5">
+                Upload an Excel or CSV file. We'll show you what's inside.
+              </p>
 
-            <div className="border border-gray-200 rounded p-4 flex items-center justify-between mb-6">
-              <div>
-                <p className="font-medium text-gray-900">{workbook.filename}</p>
-                <p className="text-sm text-gray-500 mt-1">
-                  {(workbook.fileSize / 1024).toFixed(1)} KB ·{" "}
-                  {workbook.fileType.toUpperCase()}
+              <label
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragging(true);
+                }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={handleDrop}
+                className={`block border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition ${
+                  dragging
+                    ? "border-black bg-gray-50"
+                    : "border-gray-300 hover:border-gray-400"
+                } ${uploading ? "opacity-50 pointer-events-none" : ""}`}
+              >
+                <input
+                  type="file"
+                  accept=".xlsx,.csv"
+                  onChange={handleFileInput}
+                  className="hidden"
+                />
+                <p className="text-gray-700 font-medium mb-1">
+                  {uploading ? "Uploading..." : "Drop your file here"}
                 </p>
-              </div>
-              <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-700">
-                {workbook.status}
-              </span>
-            </div>
-
-            {error && (
-              <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">
-                {error}
-              </div>
-            )}
-
-                        {analysis ? (
-              <div>
-                <AnalysisResult analysis={analysis} />
-
-                <div className="border-t mt-8 pt-6">
-                  {definition ? (
-                    <div className="space-y-6">
-                      <AIReasoning
-                        definition={definition}
-                        workbook={analysis}
-                      />
-                      <DefinitionPreview definition={definition} />
-                    </div>
-                  ) : (
-                    <>
-                      <h3 className="text-md font-semibold text-gray-900 mb-2">
-                        Ready to generate
-                      </h3>
-                      <p className="text-sm text-gray-500 mb-4">
-                        SheetForge will ask AI to design your application based
-                        on this data.
-                      </p>
-                      <button
-                        onClick={handleGenerate}
-                        disabled={generating}
-                        className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800 disabled:opacity-50"
-                      >
-                        {generating
-                          ? "AI is designing your app..."
-                          : "Generate Application"}
-                      </button>
-                    </>
-                  )}
+                <p className="text-gray-400 text-sm">
+                  or click to choose a file
+                </p>
+                <p className="text-gray-400 text-xs mt-3">
+                  Excel (.xlsx) or CSV (.csv) · Max 25 MB
+                </p>
+              </label>
+            </>
+          ) : (
+            <>
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {workbook.filename}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {(workbook.fileSize / 1024).toFixed(1)} KB ·{" "}
+                    {workbook.fileType.toUpperCase()}
+                  </p>
                 </div>
               </div>
-            ) : (
-              <button
-                onClick={handleAnalyze}
-                disabled={analyzing}
-                className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800 disabled:opacity-50"
-              >
-                {analyzing ? "Analyzing..." : "Analyze Spreadsheet"}
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="bg-white rounded-lg shadow p-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">
-              Upload your spreadsheet
-            </h2>
-            <p className="text-gray-500 text-sm mb-6">
-              Upload an Excel (.xlsx) or CSV (.csv) file to get started.
-            </p>
 
-            {error && (
-              <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">
-                {error}
+              {/* Progress steps */}
+              <div className="space-y-2">
+                <ProgressStep
+                  done
+                  label="File uploaded"
+                />
+                <ProgressStep
+                  done={hasAnalysis}
+                  active={!hasAnalysis && !analyzing}
+                  label="We look inside"
+                  action={
+                    !hasAnalysis && !analyzing ? (
+                      <button
+                        onClick={handleAnalyze}
+                        className="text-xs text-black font-medium underline"
+                      >
+                        Read it now
+                      </button>
+                    ) : !hasAnalysis && analyzing ? (
+                      <span className="text-xs text-gray-400">Reading...</span>
+                    ) : null
+                  }
+                />
+                <ProgressStep
+                  done={hasDefinition}
+                  active={hasAnalysis && !hasDefinition && !generating}
+                  label="We build your app"
+                  action={
+                    hasAnalysis && !hasDefinition && !generating ? (
+                      <button
+                        onClick={handleGenerate}
+                        className="text-xs text-black font-medium underline"
+                      >
+                        Build it now
+                      </button>
+                    ) : hasAnalysis && !hasDefinition && generating ? (
+                      <span className="text-xs text-gray-400">Building...</span>
+                    ) : null
+                  }
+                />
+                <ProgressStep done={hasDefinition} label="Ready to use" />
               </div>
-            )}
 
-            <label
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragging(true);
-              }}
-              onDragLeave={() => setDragging(false)}
-              onDrop={handleDrop}
-              className={`block border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition ${
-                dragging
-                  ? "border-black bg-gray-50"
-                  : "border-gray-300 hover:border-gray-400"
-              } ${uploading ? "opacity-50 pointer-events-none" : ""}`}
-            >
-              <input
-                type="file"
-                accept=".xlsx,.csv"
-                onChange={handleFileInput}
-                className="hidden"
-              />
-              <p className="text-gray-700 font-medium mb-1">
-                {uploading ? "Uploading..." : "Drop your spreadsheet here"}
-              </p>
-              <p className="text-gray-400 text-sm">
-                or click to select a file
-              </p>
-              <p className="text-gray-400 text-xs mt-3">
-                Excel (.xlsx) or CSV (.csv) · Max 25 MB
-              </p>
-            </label>
-          </div>
+              {/* Preview toggle — small, quiet */}
+              {hasAnalysis && (
+                <div className="mt-5 pt-5 border-t border-gray-100">
+                  <button
+                    onClick={() => setShowPreview(!showPreview)}
+                    className="text-xs text-gray-500 hover:text-gray-900 flex items-center gap-1"
+                  >
+                    {showPreview ? "Hide" : "See a preview of your file"}
+                    <span className="text-[10px]">
+                      {showPreview ? "▲" : "▼"}
+                    </span>
+                  </button>
+
+                  {showPreview && (
+                    <div className="mt-4">
+                      <CompactPreview analysis={analysis} />
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* ============================================ */}
+        {/* BLOCK 3 — What we understood                 */}
+        {/* ============================================ */}
+        {hasDefinition && (
+          <AIReasoning definition={definition} workbook={analysis} />
         )}
       </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Sub-components                                                      */
+/* ------------------------------------------------------------------ */
+
+function ProgressStep({
+  done,
+  active,
+  label,
+  action,
+}: {
+  done: boolean;
+  active?: boolean;
+  label: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <div className="flex items-center gap-3">
+        <div
+          className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${
+            done
+              ? "bg-green-100 text-green-700"
+              : active
+                ? "bg-black text-white"
+                : "bg-gray-100 text-gray-400"
+          }`}
+        >
+          {done ? "✓" : active ? "•" : "·"}
+        </div>
+        <span
+          className={
+            done
+              ? "text-gray-900 font-medium"
+              : active
+                ? "text-gray-700"
+                : "text-gray-400"
+          }
+        >
+          {label}
+        </span>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function CompactPreview({ analysis }: { analysis: any }) {
+  const sheet = analysis.sheets[0];
+  if (!sheet) return null;
+
+  return (
+    <div>
+      <div className="text-xs text-gray-500 mb-3">
+        {sheet.rowCount} {sheet.rowCount === 1 ? "record" : "records"} ·{" "}
+        {sheet.columnCount} {sheet.columnCount === 1 ? "column" : "columns"}
+      </div>
+
+      <div className="border border-gray-200 rounded overflow-x-auto">
+        <table className="min-w-full text-xs">
+          <thead className="bg-gray-50">
+            <tr>
+              {sheet.headers.map((h: string) => (
+                <th
+                  key={h}
+                  className="px-3 py-2 text-left text-[11px] font-semibold text-gray-600 whitespace-nowrap"
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {sheet.sampleRows.slice(0, 3).map((row: any, i: number) => (
+              <tr key={i}>
+                {sheet.headers.map((h: string) => (
+                  <td
+                    key={h}
+                    className="px-3 py-2 text-gray-700 whitespace-nowrap"
+                  >
+                    {row[h] || "—"}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {sheet.rowCount > 3 && (
+        <p className="text-[11px] text-gray-400 mt-2">
+          + {sheet.rowCount - 3} more{" "}
+          {sheet.rowCount - 3 === 1 ? "row" : "rows"}
+        </p>
+      )}
     </div>
   );
 }

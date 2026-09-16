@@ -68,14 +68,17 @@ export async function chat({
               "HTTP-Referer": "https://sheetforge.app",
               "X-Title": "SheetForge",
             },
-            body: JSON.stringify({
+                        body: JSON.stringify({
               model,
               messages,
               temperature,
-              // Ask OpenRouter to route to the fastest healthy provider
+              // Force the model to return only valid JSON — no reasoning text
+              response_format: { type: "json_object" },
               provider: {
                 sort: "throughput",
                 allow_fallbacks: true,
+                // Only route to providers that support the json_object parameter
+                require_parameters: true,
               },
             }),
           }

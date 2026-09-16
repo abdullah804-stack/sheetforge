@@ -31,32 +31,65 @@ interface ParsedWorkbook {
   sheets: ParsedSheet[];
 }
 
+/**
+ * Translates our internal type names to plain user language.
+ */
+function friendlyType(t: string): string {
+  switch (t) {
+    case "text":
+      return "Text";
+    case "longtext":
+      return "Long text";
+    case "integer":
+      return "Number";
+    case "decimal":
+      return "Number";
+    case "currency":
+      return "Money";
+    case "boolean":
+      return "Yes / No";
+    case "date":
+      return "Date";
+    case "datetime":
+      return "Date & time";
+    case "email":
+      return "Email";
+    case "url":
+      return "Link";
+    case "select":
+      return "Category";
+    default:
+      return "Text";
+  }
+}
+
 export function AnalysisResult({ analysis }: { analysis: ParsedWorkbook }) {
   const [activeSheet, setActiveSheet] = useState(0);
   const sheet = analysis.sheets[activeSheet];
 
   if (!sheet) {
-    return <p className="text-red-600 text-sm">No sheets detected.</p>;
+    return <p className="text-sm text-gray-500">No data found.</p>;
   }
 
   return (
     <div>
       <div className="mb-6">
         <h3 className="text-md font-semibold text-gray-900 mb-3">
-          Detected structure
+          What's inside your file
         </h3>
         <div className="grid grid-cols-3 gap-3">
-          <StatCard label="Sheets" value={analysis.sheetCount} />
-          <StatCard label="Rows" value={sheet.rowCount} />
-          <StatCard label="Columns" value={sheet.columnCount} />
+          <StatCard
+            label="Tab"
+            value={analysis.sheetCount === 1 ? "1" : String(analysis.sheetCount)}
+          />
+          <StatCard label="Records" value={String(sheet.rowCount)} />
+          <StatCard label="Fields" value={String(sheet.columnCount)} />
         </div>
       </div>
 
       {analysis.sheets.length > 1 && (
         <div className="mb-6">
-          <h3 className="text-md font-semibold text-gray-900 mb-3">
-            Sheets
-          </h3>
+          <h3 className="text-md font-semibold text-gray-900 mb-3">Tabs</h3>
           <div className="flex flex-wrap gap-2">
             {analysis.sheets.map((s, i) => (
               <button
@@ -77,27 +110,27 @@ export function AnalysisResult({ analysis }: { analysis: ParsedWorkbook }) {
       )}
 
       <div className="mb-6">
-        <h3 className="text-md font-semibold text-gray-900 mb-3">Columns</h3>
+        <h3 className="text-md font-semibold text-gray-900 mb-3">
+          Your columns
+        </h3>
         <div className="border border-gray-200 rounded divide-y">
           {sheet.columns.map((col) => (
             <div
               key={col.name}
               className="p-3 flex items-center justify-between"
             >
-              <div className="flex-1">
-                <p className="font-medium text-gray-900 text-sm">{col.name}</p>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-gray-900 text-sm truncate">
+                  {col.name}
+                </p>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  {col.uniqueValues} unique · {col.emptyPercent}% empty
-                  {col.min !== undefined && col.max !== undefined && (
-                    <>
-                      {" "}
-                      · {col.min}–{col.max}
-                    </>
-                  )}
+                  {col.emptyPercent === 0
+                    ? "No empty values"
+                    : `${col.emptyPercent}% of rows are empty`}
                 </p>
               </div>
-              <span className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-700 font-mono">
-                {col.detectedType}
+              <span className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700">
+                {friendlyType(col.detectedType)}
               </span>
             </div>
           ))}
@@ -106,7 +139,7 @@ export function AnalysisResult({ analysis }: { analysis: ParsedWorkbook }) {
 
       <div>
         <h3 className="text-md font-semibold text-gray-900 mb-3">
-          Sample data
+          A preview
         </h3>
         <div className="border border-gray-200 rounded overflow-x-auto">
           <table className="min-w-full text-sm">
@@ -139,14 +172,15 @@ export function AnalysisResult({ analysis }: { analysis: ParsedWorkbook }) {
           </table>
         </div>
         <p className="text-xs text-gray-400 mt-2">
-          Showing 5 of {sheet.rowCount} rows
+          Showing the first 5 of {sheet.rowCount}{" "}
+          {sheet.rowCount === 1 ? "record" : "records"}
         </p>
       </div>
     </div>
   );
 }
 
-function StatCard({ label, value }: { label: string; value: number }) {
+function StatCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="border border-gray-200 rounded p-3">
       <p className="text-xs text-gray-500">{label}</p>
@@ -154,4 +188,5 @@ function StatCard({ label, value }: { label: string; value: number }) {
     </div>
   );
 }
+
 export default AnalysisResult;

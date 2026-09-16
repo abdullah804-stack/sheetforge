@@ -93,17 +93,17 @@ export default async function AppRuntimePage({
             <h1 className="text-xl font-bold text-gray-900">
               {application.name}
             </h1>
-            <p className="text-xs text-gray-500">
-              {definition.primaryEntity.name}
+                        <p className="text-xs text-gray-500">
+              {records.length} {records.length === 1 ? "record" : "records"}
             </p>
           </div>
           <div className="flex items-center gap-3">
             <DownloadButton applicationId={application.id} />
-            <Link
+                        <Link
               href={`/dashboard/app/${application.id}`}
               className="text-sm text-gray-500 hover:text-gray-900"
             >
-              Edit definition →
+              Settings
             </Link>
           </div>
         </div>
