@@ -220,9 +220,9 @@ export default function RecordsTable({
 
         <button
           onClick={() => setFilterOpen(!filterOpen)}
-          className={`px-3 py-2 rounded-md text-sm border transition ${
+                    className={`px-3 py-2 rounded-md text-sm border transition ${
             activeFilterCount > 0
-              ? "border-black bg-black text-white"
+              ? "theme-accent-border theme-accent-bg text-white"
               : "border-gray-300 text-gray-700 hover:bg-gray-50"
           }`}
         >
@@ -236,21 +236,21 @@ export default function RecordsTable({
 
         <div className="flex items-center gap-2 ml-auto">
           <div className="border border-gray-200 rounded-md p-0.5 flex">
-            <button
+                        <button
               onClick={() => setView("grid")}
               className={`px-2.5 py-1 text-xs rounded ${
                 view === "grid"
-                  ? "bg-gray-900 text-white"
+                  ? "theme-accent-bg text-white"
                   : "text-gray-600 hover:text-gray-900"
               }`}
             >
               Grid
             </button>
-            <button
+                        <button
               onClick={() => setView("list")}
               className={`px-2.5 py-1 text-xs rounded ${
                 view === "list"
-                  ? "bg-gray-900 text-white"
+                  ? "theme-accent-bg text-white"
                   : "text-gray-600 hover:text-gray-900"
               }`}
             >
@@ -263,9 +263,9 @@ export default function RecordsTable({
             {filtered.length !== records.length ? ` of ${records.length}` : ""}
           </p>
 
-          <button
+                    <button
             onClick={openAddForm}
-            className="bg-black text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition"
+            className="theme-accent-bg text-white px-3 py-2 rounded-md text-sm font-medium transition"
           >
             + Add
           </button>
@@ -504,10 +504,10 @@ export default function RecordsTable({
                 >
                   Cancel
                 </button>
-                <button
+                                <button
                   type="submit"
                   disabled={saving}
-                  className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition disabled:opacity-50"
+                  className="theme-accent-bg text-white px-4 py-2 rounded-md text-sm font-medium transition disabled:opacity-50"
                 >
                   {saving
                     ? "Saving..."

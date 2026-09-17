@@ -7,6 +7,10 @@ CRITICAL OUTPUT RULES:
 - If you're unsure about something, still return the JSON — set "confidence": "low" and add a note.
 - Never include commentary before or after the JSON.
 
+- If the workbook contains multiple sheets with distinct entities (e.g., Products and Suppliers), list the secondary ones in "supportingEntities".
+- Do NOT invent supporting entities. Only include them if the sheet exists and has structured data.
+- If there is only one meaningful dataset, set "supportingEntities": [].
+
 Given a summary of a spreadsheet, you must produce a JSON object that describes what kind of application should be created.
 
 The JSON must match this exact shape:

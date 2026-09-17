@@ -102,7 +102,7 @@ export default function PublicRecordsTable({
               onClick={() => setView("grid")}
               className={`px-2.5 py-1 text-xs rounded ${
                 view === "grid"
-                  ? "bg-gray-900 text-white"
+                  ? "theme-accent-bg text-white"
                   : "text-gray-600 hover:text-gray-900"
               }`}
             >
@@ -112,7 +112,7 @@ export default function PublicRecordsTable({
               onClick={() => setView("list")}
               className={`px-2.5 py-1 text-xs rounded ${
                 view === "list"
-                  ? "bg-gray-900 text-white"
+                  ? "theme-accent-bg text-white"
                   : "text-gray-600 hover:text-gray-900"
               }`}
             >
