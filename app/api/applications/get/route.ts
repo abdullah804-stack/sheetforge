@@ -45,12 +45,18 @@ export async function GET(req: Request) {
     }
 
     return NextResponse.json({
-      application: {
+            application: {
         id: application.id,
         name: application.name,
         status: application.status,
         type: application.type,
         createdAt: application.createdAt,
+        definition: application.definition,
+        slug: application.slug,
+        visibility: application.visibility,
+        publishedAt: application.publishedAt,
+        theme: application.theme,
+        logoUrl: application.logoUrl,
       },
       workbook: application.workbooks[0] || null,
     });

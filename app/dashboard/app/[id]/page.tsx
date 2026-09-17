@@ -15,6 +15,8 @@ interface Application {
   visibility?: string;
   publishedAt?: string | null;
   definition?: any;
+  theme?: string;
+  logoUrl?: string | null;
 }
 
 interface Workbook {
@@ -293,7 +295,7 @@ export default function AppDetailPage() {
           </div>
 
           {/* Primary actions — only show what's available */}
-          <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
             {hasDefinition && (
               <>
                 <Link
@@ -301,6 +303,12 @@ export default function AppDetailPage() {
                   className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition"
                 >
                   Open app →
+                </Link>
+                <Link
+                  href={`/dashboard/app/${application.id}/customize`}
+                  className="border border-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm hover:bg-gray-50 transition"
+                >
+                  Customize
                 </Link>
                 <a
                   href={`/api/applications/export?applicationId=${application.id}&format=csv`}

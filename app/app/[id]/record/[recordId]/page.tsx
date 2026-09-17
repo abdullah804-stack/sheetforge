@@ -43,14 +43,14 @@ export default async function RecordDetailPage({
   const titleField = fields.find((f) =>
     /^(name|title|product|customer|employee|item)$/i.test(f.name)
   );
-  const title = titleField ? String(data[titleField.name] ?? "Record") : "Record";
+  const title = titleField
+    ? String(data[titleField.name] ?? "Record")
+    : "Record";
 
-  // Fields to display: everything visible, in order
   const displayFields = fields.filter((f) => f.visible);
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Top bar */}
       <div className="bg-white border-b">
         <div className="max-w-3xl mx-auto px-6 py-4 flex items-center gap-3">
           <Link
@@ -85,9 +85,6 @@ export default async function RecordDetailPage({
 
           <div className="mt-8 pt-6 border-t border-gray-100 text-xs text-gray-400">
             Created {new Date(record.createdAt).toLocaleString()}
-            {record.updatedAt.getTime() !== record.createdAt.getTime() && (
-              <> · Updated {new Date(record.updatedAt).toLocaleString()}</>
-            )}
           </div>
         </div>
       </div>
