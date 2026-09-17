@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { checkEditAccess, checkAppAccess } from "@/lib/access/check";
 import {
   checkRecordLimit,
   checkAndIncrementEditUsage,
@@ -8,20 +9,9 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-// Helper — verify the user owns the application
-async function verifyOwnership(email: string, applicationId: string) {
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) return null;
-
-  const application = await prisma.application.findUnique({
-    where: { id: applicationId },
-  });
-
-  if (!application || application.userId !== user.id) return null;
-  return application;
-}
-
-// LIST records
+/* ------------------------------------------------------------------ */
+/* GET — list records (any access: owner, editor, viewer)              */
+/* ------------------------------------------------------------------ */
 export async function GET(req: Request) {
   try {
     const session = await auth();
@@ -40,8 +30,15 @@ export async function GET(req: Request) {
       );
     }
 
-    const app = await verifyOwnership(session.user.email, applicationId);
-    if (!app) {
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+    });
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    const access = await checkAppAccess(user.id, applicationId);
+    if (!access.ok) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
@@ -57,7 +54,9 @@ export async function GET(req: Request) {
   }
 }
 
-// CREATE record
+/* ------------------------------------------------------------------ */
+/* POST — create a record (owner + editor only)                        */
+/* ------------------------------------------------------------------ */
 export async function POST(req: Request) {
   try {
     const session = await auth();
@@ -75,22 +74,19 @@ export async function POST(req: Request) {
       );
     }
 
-    const app = await verifyOwnership(session.user.email, applicationId);
-    if (!app) {
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+    });
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    const access = await checkEditAccess(user.id, applicationId);
+    if (!access.ok) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const record = await prisma.record.create({
-      data: { applicationId, entityName, data },
-    });
-
-    return NextResponse.json({ record });
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
-  }
-}
-
+    // Enforce record-count limit per application
     const recordLimit = await checkRecordLimit(
       applicationId,
       session.user.email,
@@ -109,6 +105,7 @@ export async function POST(req: Request) {
       );
     }
 
+    // Enforce monthly edit limit
     const editLimit = await checkAndIncrementEditUsage(
       user.id,
       session.user.email
@@ -126,7 +123,20 @@ export async function POST(req: Request) {
       );
     }
 
-// UPDATE record
+    const record = await prisma.record.create({
+      data: { applicationId, entityName, data },
+    });
+
+    return NextResponse.json({ record });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({ error: "Failed" }, { status: 500 });
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* PATCH — update a record (owner + editor only)                       */
+/* ------------------------------------------------------------------ */
 export async function PATCH(req: Request) {
   try {
     const session = await auth();
@@ -147,17 +157,39 @@ export async function PATCH(req: Request) {
     const existing = await prisma.record.findUnique({
       where: { id: recordId },
     });
-
     if (!existing) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const app = await verifyOwnership(
-      session.user.email,
-      existing.applicationId
-    );
-    if (!app) {
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+    });
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Use the record's application for the access check
+    const access = await checkEditAccess(user.id, existing.applicationId);
+    if (!access.ok) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    // Enforce monthly edit limit
+    const editLimit = await checkAndIncrementEditUsage(
+      user.id,
+      session.user.email
+    );
+    if (!editLimit.ok) {
+      return NextResponse.json(
+        {
+          error: `You've reached your Free plan limit of ${editLimit.max} edits this month.`,
+          code: "LIMIT_REACHED",
+          limit: "edits",
+          used: editLimit.used,
+          max: editLimit.max,
+        },
+        { status: 402 }
+      );
     }
 
     const record = await prisma.record.update({
@@ -172,7 +204,9 @@ export async function PATCH(req: Request) {
   }
 }
 
-// DELETE record
+/* ------------------------------------------------------------------ */
+/* DELETE — remove a record (owner + editor only)                      */
+/* ------------------------------------------------------------------ */
 export async function DELETE(req: Request) {
   try {
     const session = await auth();
@@ -184,23 +218,48 @@ export async function DELETE(req: Request) {
     const recordId = searchParams.get("recordId");
 
     if (!recordId) {
-      return NextResponse.json({ error: "recordId required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "recordId required" },
+        { status: 400 }
+      );
     }
 
     const existing = await prisma.record.findUnique({
       where: { id: recordId },
     });
-
     if (!existing) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const app = await verifyOwnership(
-      session.user.email,
-      existing.applicationId
-    );
-    if (!app) {
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+    });
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Use the record's application for the access check
+    const access = await checkEditAccess(user.id, existing.applicationId);
+    if (!access.ok) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    // Enforce monthly edit limit
+    const editLimit = await checkAndIncrementEditUsage(
+      user.id,
+      session.user.email
+    );
+    if (!editLimit.ok) {
+      return NextResponse.json(
+        {
+          error: `You've reached your Free plan limit of ${editLimit.max} edits this month.`,
+          code: "LIMIT_REACHED",
+          limit: "edits",
+          used: editLimit.used,
+          max: editLimit.max,
+        },
+        { status: 402 }
+      );
     }
 
     await prisma.record.delete({ where: { id: recordId } });

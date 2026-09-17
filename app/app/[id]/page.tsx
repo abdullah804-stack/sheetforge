@@ -11,6 +11,7 @@ import RecordsTable from "./RecordsTable";
 import Pagination from "./Pagination";
 import ThemeWrapper from "./ThemeWrapper";
 import EntityTabs from "./EntityTabs";
+import { checkAppAccess } from "@/lib/access/check";
 
 export default async function AppRuntimePage({
   params,
@@ -36,13 +37,13 @@ export default async function AppRuntimePage({
 
   if (!user) redirect("/login");
 
-  const application = await prisma.application.findUnique({
-    where: { id },
-  });
-
-  if (!application || application.userId !== user.id) {
+    const access = await checkAppAccess(user.id, id);
+  if (!access.ok) {
     notFound();
   }
+  const application = access.application;
+  const userRole = access.role; // "owner" | "editor" | "viewer"
+  const canEdit = userRole === "owner" || userRole === "editor";
 
   const definition = application.definition as any;
 
@@ -221,12 +222,12 @@ export default async function AppRuntimePage({
           {/* Charts — primary entity only */}
           {chartInfo.length > 0 && <Charts charts={chartInfo} />}
 
-          {/* Records */}
-          <RecordsTable
+                    <RecordsTable
             applicationId={application.id}
             entityName={entityName}
             fields={visibleFields}
             initialRecords={records}
+            readOnly={!canEdit}
           />
 
           {/* Pagination */}

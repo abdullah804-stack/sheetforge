@@ -31,8 +31,10 @@ export default function SignupPage() {
       return;
     }
 
-    await signIn("credentials", { email, password, redirect: false });
-    router.push("/dashboard");
+      await signIn("credentials", { email, password, redirect: false });
+    const params = new URLSearchParams(window.location.search);
+    const redirect = params.get("redirect") || "/dashboard";
+    router.push(redirect);
   }
 
   return (

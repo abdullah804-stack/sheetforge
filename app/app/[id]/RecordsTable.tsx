@@ -26,11 +26,13 @@ export default function RecordsTable({
   entityName,
   fields,
   initialRecords,
+  readOnly = false,
 }: {
   applicationId: string;
   entityName: string;
   fields: FieldDef[];
   initialRecords: Record_[];
+  readOnly?: boolean;
 }) {
   const [records, setRecords] = useState<Record_[]>(initialRecords);
   const [search, setSearch] = useState("");
@@ -263,12 +265,14 @@ export default function RecordsTable({
             {filtered.length !== records.length ? ` of ${records.length}` : ""}
           </p>
 
-                    <button
-            onClick={openAddForm}
-            className="theme-accent-bg text-white px-3 py-2 rounded-md text-sm font-medium transition"
-          >
-            + Add
-          </button>
+                              {!readOnly && (
+            <button
+              onClick={openAddForm}
+              className="theme-accent-bg text-white px-3 py-2 rounded-md text-sm font-medium transition"
+            >
+              + Add
+            </button>
+          )}
         </div>
       </div>
 
@@ -337,7 +341,7 @@ export default function RecordsTable({
       ) : view === "grid" ? (
         /* GRID VIEW */
         <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filtered.map((r) => (
+                    {filtered.map((r) => (
             <RecordCard
               key={r.id}
               record={r}
@@ -345,6 +349,7 @@ export default function RecordsTable({
               applicationId={applicationId}
               onEdit={() => openEditForm(r)}
               onDelete={() => setDeleteConfirm(r)}
+              readOnly={readOnly}
             />
           ))}
         </div>
@@ -386,19 +391,23 @@ export default function RecordsTable({
                       {formatValue(r.data[f.name], f.type)}
                     </td>
                   ))}
-                  <td className="px-4 py-2 text-right whitespace-nowrap">
-                    <button
-                      onClick={() => openEditForm(r)}
-                      className="text-xs text-gray-600 hover:text-gray-900 mr-3"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => setDeleteConfirm(r)}
-                      className="text-xs text-red-600 hover:text-red-800"
-                    >
-                      Delete
-                    </button>
+                                    <td className="px-4 py-2 text-right whitespace-nowrap">
+                    {!readOnly && (
+                      <>
+                        <button
+                          onClick={() => openEditForm(r)}
+                          className="text-xs text-gray-600 hover:text-gray-900 mr-3"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirm(r)}
+                          className="text-xs text-red-600 hover:text-red-800"
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}

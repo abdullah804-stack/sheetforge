@@ -18,12 +18,14 @@ export default function RecordCard({
   applicationId,
   onEdit,
   onDelete,
+  readOnly = false,
 }: {
   record: Record_;
   fields: FieldDef[];
   applicationId: string;
   onEdit: () => void;
   onDelete: () => void;
+  readOnly?: boolean;
 }) {
   const visibleFields = fields.filter((f) => f.visible);
 
@@ -84,27 +86,29 @@ export default function RecordCard({
       )}
 
       {/* Actions */}
-            <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                <Link
+                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+        <Link
           href={`/app/${applicationId}/record/${record.id}`}
           className="text-xs text-gray-600 hover:text-gray-900 font-medium"
         >
           View details
         </Link>
-        <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition">
-          <button
-            onClick={onEdit}
-            className="text-xs text-gray-600 hover:text-gray-900"
-          >
-            Edit
-          </button>
-          <button
-            onClick={onDelete}
-            className="text-xs text-gray-400 hover:text-red-600"
-          >
-            Delete
-          </button>
-        </div>
+        {!readOnly && (
+          <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition">
+            <button
+              onClick={onEdit}
+              className="text-xs text-gray-600 hover:text-gray-900"
+            >
+              Edit
+            </button>
+            <button
+              onClick={onDelete}
+              className="text-xs text-gray-400 hover:text-red-600"
+            >
+              Delete
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

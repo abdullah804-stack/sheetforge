@@ -29,7 +29,9 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/dashboard");
+        const params = new URLSearchParams(window.location.search);
+    const redirect = params.get("redirect") || "/dashboard";
+    router.push(redirect);
     router.refresh();
   }
 

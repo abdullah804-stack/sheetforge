@@ -12,14 +12,26 @@ export default async function DashboardPage() {
 
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
+    include: {
+      applications: {
+        orderBy: { createdAt: "desc" },
+      },
+      appMemberships: {
+        include: {
+          application: true,
+        },
+        orderBy: { createdAt: "desc" },
+      },
+    },
   });
 
-  const applications = user
-    ? await prisma.application.findMany({
-        where: { userId: user.id },
-        orderBy: { createdAt: "desc" },
-      })
-    : [];
+  const applications = user?.applications ?? [];
+  const sharedApps = (user?.appMemberships ?? [])
+    .map((m) => ({
+      ...m.application,
+      role: m.role,
+    }))
+    .filter((a) => a.status !== "DELETED");
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -33,7 +45,7 @@ export default async function DashboardPage() {
             </p>
           </div>
 
-                    <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4">
             <Link
               href="/dashboard/settings"
               className="text-sm text-gray-600 hover:text-gray-900"
@@ -64,9 +76,45 @@ export default async function DashboardPage() {
           + Create New App
         </Link>
 
+        {/* Shared with me */}
+        {sharedApps.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              Shared with me
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {sharedApps.map((app) => (
+                <Link
+                  key={app.id}
+                  href={`/app/${app.id}`}
+                  className="bg-white rounded-lg shadow p-6 hover:shadow-md transition block border border-blue-100"
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {app.name}
+                    </h3>
+                    <span
+                      className={`text-xs px-2 py-1 rounded ${
+                        app.role === "editor"
+                          ? "bg-blue-100 text-blue-700"
+                          : "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      {app.role}
+                    </span>
+                  </div>
+                  <p className="text-gray-500 text-sm">
+                    Type: {app.type}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Applications list */}
         {applications.length === 0 ? (
-                    <div className="bg-white rounded-lg shadow p-12 text-center max-w-lg mx-auto">
+          <div className="bg-white rounded-lg shadow p-12 text-center max-w-lg mx-auto">
             <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gray-100 flex items-center justify-center">
               <svg
                 className="w-8 h-8 text-gray-400"
@@ -98,7 +146,7 @@ export default async function DashboardPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {applications.map((app: (typeof applications)[number]) => (
+            {applications.map((app) => (
               <Link
                 key={app.id}
                 href={`/dashboard/app/${app.id}`}
