@@ -33,19 +33,27 @@ export default async function DashboardPage() {
             </p>
           </div>
 
-          <form
-            action={async () => {
-              "use server";
-              await signOut({ redirectTo: "/login" });
-            }}
-          >
-            <button
-              type="submit"
-              className="text-sm text-gray-600 hover:text-gray-900 underline"
+                    <div className="flex items-center gap-4">
+            <Link
+              href="/dashboard/settings"
+              className="text-sm text-gray-600 hover:text-gray-900"
             >
-              Sign out
-            </button>
-          </form>
+              Settings
+            </Link>
+            <form
+              action={async () => {
+                "use server";
+                await signOut({ redirectTo: "/login" });
+              }}
+            >
+              <button
+                type="submit"
+                className="text-sm text-gray-600 hover:text-gray-900 underline"
+              >
+                Sign out
+              </button>
+            </form>
+          </div>
         </div>
 
         {/* Create new app button */}
