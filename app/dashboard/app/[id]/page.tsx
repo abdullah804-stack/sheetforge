@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import AIReasoning from "./AIReasoning";
+import SharePanel from "./SharePanel";
 
 interface Application {
   id: string;
@@ -372,6 +373,18 @@ export default function AppDetailPage() {
             </div>
           )}
         </div>
+
+                {/* ============================================ */}
+        {/* Team sharing (only after app is built)       */}
+        {/* ============================================ */}
+        {hasDefinition && (
+          <div className="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 className="text-base font-semibold text-gray-900 mb-1">
+              Share with your team
+            </h2>
+            <SharePanel applicationId={application.id} />
+          </div>
+        )}
 
         {/* ============================================ */}
         {/* BLOCK 2 — File + Progress                    */}
