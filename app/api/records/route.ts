@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import {
+  checkRecordLimit,
+  checkAndIncrementEditUsage,
+} from "@/lib/usage/limits";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -86,6 +90,41 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }
 }
+
+    const recordLimit = await checkRecordLimit(
+      applicationId,
+      session.user.email,
+      1
+    );
+    if (!recordLimit.ok) {
+      return NextResponse.json(
+        {
+          error: `You've reached your Free plan limit of ${recordLimit.max} records in this application.`,
+          code: "LIMIT_REACHED",
+          limit: "records",
+          used: recordLimit.used,
+          max: recordLimit.max,
+        },
+        { status: 402 }
+      );
+    }
+
+    const editLimit = await checkAndIncrementEditUsage(
+      user.id,
+      session.user.email
+    );
+    if (!editLimit.ok) {
+      return NextResponse.json(
+        {
+          error: `You've reached your Free plan limit of ${editLimit.max} edits this month.`,
+          code: "LIMIT_REACHED",
+          limit: "edits",
+          used: editLimit.used,
+          max: editLimit.max,
+        },
+        { status: 402 }
+      );
+    }
 
 // UPDATE record
 export async function PATCH(req: Request) {

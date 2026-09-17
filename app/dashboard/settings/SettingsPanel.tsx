@@ -11,12 +11,34 @@ interface UserData {
   createdAt: string;
 }
 
+interface Usage {
+  apps: { used: number; max: number };
+  ai: { used: number; max: number };
+  edits: { used: number; max: number };
+  recordsPerApp: { max: number };
+  fileSize: { max: number };
+}
+
+interface Limits {
+  maxApps: number;
+  maxRecordsPerApp: number;
+  maxFileSizeBytes: number;
+  maxAiPerMonth: number;
+  maxEditsPerMonth: number;
+}
+
 export default function SettingsPanel({
   user,
   applicationCount,
+  usage,
+  isAdmin,
+  limits,
 }: {
   user: UserData;
   applicationCount: number;
+  usage: Usage | null;
+  isAdmin: boolean;
+  limits: Limits;
 }) {
   const router = useRouter();
 
@@ -160,6 +182,59 @@ export default function SettingsPanel({
         </button>
       </div>
 
+              {/* Usage */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-base font-semibold text-gray-900">
+            Usage
+          </h2>
+          <span
+            className={`text-xs px-2 py-0.5 rounded font-medium ${
+              isAdmin
+                ? "bg-purple-50 text-purple-700"
+                : "bg-gray-100 text-gray-600"
+            }`}
+          >
+            {isAdmin ? "Admin · unlimited" : "Free plan"}
+          </span>
+        </div>
+        <p className="text-xs text-gray-500 mb-5">
+          {isAdmin
+            ? "You have unlimited access. Limits don't apply to your account."
+            : "What you've used on your current plan."}
+        </p>
+
+        {usage && !isAdmin && (
+          <div className="space-y-4">
+            <UsageRow
+              label="Applications"
+              used={usage.apps.used}
+              max={usage.apps.max}
+            />
+            <UsageRow
+              label="AI generations this month"
+              used={usage.ai.used}
+              max={usage.ai.max}
+            />
+            <UsageRow
+              label="Manual edits this month"
+              used={usage.edits.used}
+              max={usage.edits.max}
+            />
+            <div className="pt-3 border-t border-gray-100 text-xs text-gray-500 space-y-1">
+              <p>
+                <span className="font-medium text-gray-700">Per app:</span>{" "}
+                up to {usage.recordsPerApp.max.toLocaleString()} records
+              </p>
+              <p>
+                <span className="font-medium text-gray-700">File size:</span>{" "}
+                up to {(usage.fileSize.max / 1024 / 1024).toFixed(0)} MB
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Danger zone */}
       <div className="bg-white rounded-lg shadow p-6 border border-red-100">
         <h2 className="text-base font-semibold text-red-700 mb-1">
@@ -239,6 +314,50 @@ function Row({ label, value }: { label: string; value: string }) {
     <div className="flex items-baseline justify-between py-2 border-b border-gray-50">
       <span className="text-sm text-gray-500">{label}</span>
       <span className="text-sm text-gray-900 font-medium">{value}</span>
+    </div>
+  );
+}
+function UsageRow({
+  label,
+  used,
+  max,
+}: {
+  label: string;
+  used: number;
+  max: number;
+}) {
+  const percent = Math.min(100, Math.round((used / max) * 100));
+  const isNearLimit = percent >= 80;
+  const isAtLimit = used >= max;
+
+  return (
+    <div>
+      <div className="flex justify-between text-sm mb-1.5">
+        <span className="text-gray-700">{label}</span>
+        <span
+          className={`font-medium ${
+            isAtLimit
+              ? "text-red-600"
+              : isNearLimit
+                ? "text-yellow-600"
+                : "text-gray-500"
+          }`}
+        >
+          {used} / {max}
+        </span>
+      </div>
+      <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all ${
+            isAtLimit
+              ? "bg-red-500"
+              : isNearLimit
+                ? "bg-yellow-500"
+                : "bg-black"
+          }`}
+          style={{ width: `${percent}%` }}
+        />
+      </div>
     </div>
   );
 }

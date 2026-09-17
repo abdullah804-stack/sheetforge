@@ -1,6 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { checkRecordLimit } from "@/lib/usage/limits";
 import { auth } from "@/auth";
+import { checkAndIncrementAiUsage } from "@/lib/usage/limits";
 import { prisma } from "@/lib/prisma";
 import { chat } from "@/lib/ai/client";
 import { SYSTEM_PROMPT, buildUserPrompt } from "@/lib/ai/prompt";
@@ -35,6 +37,19 @@ export async function POST(req: Request) {
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+        const aiLimit = await checkAndIncrementAiUsage(user.id, session.user.email);
+    if (!aiLimit.ok) {
+      return NextResponse.json(
+        {
+          error: `You've reached your Free plan limit of ${aiLimit.max} AI generations this month.`,
+          code: "LIMIT_REACHED",
+          limit: "ai",
+          used: aiLimit.used,
+          max: aiLimit.max,
+        },
+        { status: 402 }
+      );
     }
 
     const workbook = await prisma.workbook.findUnique({
@@ -101,11 +116,36 @@ export async function POST(req: Request) {
       },
     });
 
-    // Import records from the parsed workbook.
+        // Import records from the parsed workbook.
     // Clear any previous records for this app first (idempotent re-generation).
     await prisma.record.deleteMany({
       where: { applicationId: workbook.applicationId },
     });
+
+    // Approximate how many records will be imported
+    const willImport = (parsed.sheets || []).reduce(
+      (sum: number, s: any) => sum + (s.sampleRows?.length || 0),
+      0
+    );
+
+    const recordLimit = await checkRecordLimit(
+      workbook.applicationId,
+      session.user.email,
+      willImport
+    );
+
+    if (!recordLimit.ok) {
+      return NextResponse.json(
+        {
+          error: `This file would exceed your Free plan limit of ${recordLimit.max} records per application.`,
+          code: "LIMIT_REACHED",
+          limit: "records",
+          used: recordLimit.used,
+          max: recordLimit.max,
+        },
+        { status: 402 }
+      );
+    }
 
     const importResult = await importRecords(
       workbook.applicationId,

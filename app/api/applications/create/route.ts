@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { checkAppLimit } from "@/lib/usage/limits";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,19 @@ export async function POST(req: Request) {
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+        const appLimit = await checkAppLimit(user.id, session.user.email);
+    if (!appLimit.ok) {
+      return NextResponse.json(
+        {
+          error: `You've reached your Free plan limit of ${appLimit.max} applications.`,
+          code: "LIMIT_REACHED",
+          limit: "apps",
+          used: appLimit.used,
+          max: appLimit.max,
+        },
+        { status: 402 }
+      );
     }
 
     const application = await prisma.application.create({

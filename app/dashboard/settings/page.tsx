@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import SettingsPanel from "./SettingsPanel";
+import { getUsageSnapshot, isAdmin, FREE_LIMITS } from "@/lib/usage/limits";
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -18,6 +19,9 @@ export default async function SettingsPage() {
   });
 
   if (!user) redirect("/login");
+
+        const usage = await getUsageSnapshot(user.id);
+        const userIsAdmin = isAdmin(user.email);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -45,7 +49,7 @@ export default async function SettingsPage() {
           </p>
         </div>
 
-        <SettingsPanel
+                <SettingsPanel
           user={{
             id: user.id,
             email: user.email,
@@ -53,6 +57,9 @@ export default async function SettingsPage() {
             createdAt: user.createdAt.toISOString(),
           }}
           applicationCount={user.applications.length}
+          usage={usage}
+          isAdmin={userIsAdmin}
+          limits={FREE_LIMITS}
         />
       </div>
     </div>

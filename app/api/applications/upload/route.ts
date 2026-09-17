@@ -3,10 +3,11 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { put } from "@vercel/blob";
 import path from "path";
+import { FREE_LIMITS } from "@/lib/usage/limits";
 
 export const dynamic = "force-dynamic";
 
-const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
+
 const ALLOWED_EXTENSIONS = [".xlsx", ".csv"];
 
 export async function POST(req: Request) {
@@ -51,10 +52,16 @@ export async function POST(req: Request) {
       );
     }
 
-    if (file.size > MAX_FILE_SIZE) {
+        if (file.size > FREE_LIMITS.maxFileSizeBytes) {
       return NextResponse.json(
-        { error: "File too large. Maximum size is 25 MB." },
-        { status: 400 }
+        {
+          error: `File too large. Free plan supports files up to ${
+            FREE_LIMITS.maxFileSizeBytes / 1024 / 1024
+          } MB.`,
+          code: "LIMIT_REACHED",
+          limit: "fileSize",
+        },
+        { status: 402 }
       );
     }
 
