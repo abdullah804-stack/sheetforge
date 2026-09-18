@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { styleForValue, styleClasses, ConditionalRule } from "@/lib/conditional/rules";
 interface FieldDef {
   name: string;
   label: string;
@@ -19,6 +20,7 @@ export default function RecordCard({
   onEdit,
   onDelete,
   readOnly = false,
+  rules = [],
 }: {
   record: Record_;
   fields: FieldDef[];
@@ -26,6 +28,7 @@ export default function RecordCard({
   onEdit: () => void;
   onDelete: () => void;
   readOnly?: boolean;
+  rules?: ConditionalRule[];
 }) {
   const visibleFields = fields.filter((f) => f.visible);
 
@@ -70,18 +73,26 @@ export default function RecordCard({
       )}
 
       {/* Number fields */}
-      {numberFields.length > 0 && (
+            {numberFields.length > 0 && (
         <div className="flex items-baseline gap-3 mb-3">
-          {numberFields.slice(0, 2).map((f) => (
-            <div key={f.name}>
-              <p className="text-[10px] text-gray-400 uppercase tracking-wide">
-                {f.label}
-              </p>
-              <p className="text-sm font-medium text-gray-900">
-                {formatValue(record.data[f.name], f.type)}
-              </p>
-            </div>
-          ))}
+          {numberFields.slice(0, 2).map((f) => {
+            const style = styleForValue(rules, f.name, record.data[f.name]);
+            const cls = styleClasses(style);
+            return (
+              <div key={f.name}>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wide">
+                  {f.label}
+                </p>
+                <p
+                  className={`text-sm font-medium px-1.5 py-0.5 rounded ${
+                    cls || "text-gray-900"
+                  }`}
+                >
+                  {formatValue(record.data[f.name], f.type)}
+                </p>
+              </div>
+            );
+          })}
         </div>
       )}
 

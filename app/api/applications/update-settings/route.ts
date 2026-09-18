@@ -12,7 +12,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await req.json();
+      const body = await req.json();
     const {
       applicationId,
       name,
@@ -20,6 +20,7 @@ export async function POST(req: Request) {
       visibleFields,
       activeMetrics,
       removeLogo,
+      conditionalRules,
     } = body;
 
     if (!applicationId) {
@@ -76,6 +77,28 @@ export async function POST(req: Request) {
         }
       }
 
+            // Validate conditional rules server-side
+      let cleanedRules: any[] = [];
+      if (Array.isArray(conditionalRules)) {
+        cleanedRules = conditionalRules
+          .filter(
+            (r) =>
+              r &&
+              typeof r.field === "string" &&
+              typeof r.operator === "string" &&
+              typeof r.style === "string"
+          )
+          .map((r) => ({
+            id: typeof r.id === "string" ? r.id : `rule_${Math.random()}`,
+            field: r.field,
+            operator: r.operator,
+            value: r.value ?? "",
+            value2: r.value2 ?? undefined,
+            style: r.style,
+          }))
+          .slice(0, 30); // cap at 30 rules
+      }
+
       updatedDefinition = {
         ...definition,
         primaryEntity: {
@@ -93,6 +116,7 @@ export async function POST(req: Request) {
             ? activeMetrics
             : definition.dashboard?.metrics || [],
         },
+        conditionalRules: cleanedRules,
       };
     }
 

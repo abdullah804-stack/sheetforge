@@ -223,12 +223,13 @@ export default async function AppRuntimePage({
           {/* Charts — primary entity only */}
           {chartInfo.length > 0 && <Charts charts={chartInfo} />}
 
-                    <RecordsTable
+                              <RecordsTable
             applicationId={application.id}
             entityName={entityName}
             fields={visibleFields}
             initialRecords={records}
             readOnly={!canEdit}
+            rules={definition.conditionalRules || []}
           />
 
           {/* Pagination */}

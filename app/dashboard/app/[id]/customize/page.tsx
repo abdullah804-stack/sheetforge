@@ -52,7 +52,7 @@ export default async function CustomizePage({
           </p>
         </div>
 
-        <CustomizePanel
+                <CustomizePanel
           application={{
             id: application.id,
             name: application.name,
@@ -61,6 +61,7 @@ export default async function CustomizePage({
           }}
           fields={definition?.primaryEntity?.fields || []}
           metrics={definition?.dashboard?.metrics || []}
+          initialRules={definition?.conditionalRules || []}
         />
       </div>
     </div>

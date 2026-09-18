@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import { styleForValue, styleClasses } from "@/lib/conditional/rules";
 import { formatValue } from "@/lib/records/format";
 
 export default async function RecordDetailPage({
@@ -68,19 +69,31 @@ export default async function RecordDetailPage({
           <h1 className="text-2xl font-bold text-gray-900 mb-6">{title}</h1>
 
           <div className="divide-y border-t border-gray-100">
-            {displayFields.map((f) => (
-              <div
-                key={f.name}
-                className="py-4 grid grid-cols-1 sm:grid-cols-3 gap-2"
-              >
-                <p className="text-sm text-gray-500">{f.label}</p>
-                <div className="sm:col-span-2">
-                  <p className="text-sm text-gray-900 font-medium break-words">
-                    {formatValue(data[f.name], f.type) || "—"}
-                  </p>
+                        {displayFields.map((f) => {
+              const style = styleForValue(
+                definition.conditionalRules || [],
+                f.name,
+                data[f.name]
+              );
+              const cls = styleClasses(style);
+              return (
+                <div
+                  key={f.name}
+                  className="py-4 grid grid-cols-1 sm:grid-cols-3 gap-2"
+                >
+                  <p className="text-sm text-gray-500">{f.label}</p>
+                  <div className="sm:col-span-2">
+                    <p
+                      className={`text-sm font-medium break-words inline-block px-1.5 py-0.5 rounded ${
+                        cls || "text-gray-900"
+                      }`}
+                    >
+                      {formatValue(data[f.name], f.type) || "—"}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="mt-8 pt-6 border-t border-gray-100 text-xs text-gray-400">

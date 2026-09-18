@@ -8,6 +8,7 @@ import Charts from "@/app/app/[id]/Charts";
 import Pagination from "@/app/app/[id]/Pagination";
 import ThemeWrapper from "@/app/app/[id]/ThemeWrapper";
 import EntityTabs from "@/app/app/[id]/EntityTabs";
+import { styleForValue, styleClasses } from "@/lib/conditional/rules";
 
 export const dynamic = "force-dynamic";
 
@@ -170,7 +171,11 @@ export default async function PublicAppPage({
 
           {chartInfo.length > 0 && <Charts charts={chartInfo} />}
 
-          <PublicRecordsTable fields={visibleFields} records={records} />
+                    <PublicRecordsTable
+            fields={visibleFields}
+            records={records}
+            rules={definition.conditionalRules || []}
+          />
 
           {totalPages > 1 && (
             <Pagination

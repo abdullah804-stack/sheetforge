@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import PublicRecordCard from "./PublicRecordCard";
-
+import { styleForValue, styleClasses, ConditionalRule } from "@/lib/conditional/rules";
 interface FieldDef {
   name: string;
   label: string;
@@ -22,9 +22,11 @@ type ViewMode = "grid" | "list";
 export default function PublicRecordsTable({
   fields,
   records,
+  rules = [],
 }: {
   fields: FieldDef[];
   records: Record_[];
+  rules?: ConditionalRule[];
 }) {
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState<string | null>(null);
@@ -136,7 +138,12 @@ export default function PublicRecordsTable({
       ) : view === "grid" ? (
         <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {filtered.map((r) => (
-            <PublicRecordCard key={r.id} record={r} fields={fields} />
+                        <PublicRecordCard
+              key={r.id}
+              record={r}
+              fields={fields}
+              rules={rules}
+            />
           ))}
         </div>
       ) : (
@@ -165,14 +172,20 @@ export default function PublicRecordsTable({
             <tbody className="divide-y">
               {filtered.map((r) => (
                 <tr key={r.id} className="hover:bg-gray-50">
-                  {visibleFields.map((f) => (
-                    <td
-                      key={f.name}
-                      className="px-4 py-2 text-gray-700 whitespace-nowrap"
-                    >
-                      {formatValue(r.data[f.name], f.type)}
-                    </td>
-                  ))}
+                                    {visibleFields.map((f) => {
+                    const style = styleForValue(rules, f.name, r.data[f.name]);
+                    const cls = styleClasses(style);
+                    return (
+                      <td
+                        key={f.name}
+                        className={`px-4 py-2 whitespace-nowrap ${
+                          cls || "text-gray-700"
+                        }`}
+                      >
+                        {formatValue(r.data[f.name], f.type)}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>

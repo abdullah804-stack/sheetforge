@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-
+import {
+  OPERATORS,
+  STYLES,
+  ConditionalRule,
+  RuleOperator,
+  RuleStyle,
+} from "@/lib/conditional/rules";
 interface FieldDef {
   name: string;
   label: string;
@@ -49,10 +55,12 @@ export default function CustomizePanel({
   application,
   fields: initialFields,
   metrics: initialMetrics,
+  initialRules,
 }: {
   application: ApplicationData;
   fields: FieldDef[];
   metrics: MetricDef[];
+  initialRules: ConditionalRule[];
 }) {
   const router = useRouter();
 
@@ -61,6 +69,7 @@ export default function CustomizePanel({
   const [logoUrl, setLogoUrl] = useState(application.logoUrl || "");
   const [fields, setFields] = useState<FieldDef[]>(initialFields);
   const [metrics, setMetrics] = useState<MetricDef[]>(initialMetrics);
+  const [rules, setRules] = useState<ConditionalRule[]>(initialRules);
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -83,6 +92,31 @@ export default function CustomizePanel({
         i === index ? { ...m, entity: m.entity === "__hidden" ? "" : "__hidden" } : m
       )
     );
+    setSaved(false);
+  }
+
+    function addRule() {
+    const firstField = fields[0]?.name || "";
+    setRules([
+      ...rules,
+      {
+        id: `rule_${Date.now()}`,
+        field: firstField,
+        operator: "lt",
+        value: "",
+        style: "red",
+      },
+    ]);
+    setSaved(false);
+  }
+
+  function updateRule(id: string, patch: Partial<ConditionalRule>) {
+    setRules(rules.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+    setSaved(false);
+  }
+
+  function removeRule(id: string) {
+    setRules(rules.filter((r) => r.id !== id));
     setSaved(false);
   }
 
@@ -131,7 +165,7 @@ export default function CustomizePanel({
     const activeMetrics = metrics.filter((m) => !isMetricHidden(m));
     const removeLogo = !logoUrl && !!application.logoUrl;
 
-    const res = await fetch("/api/applications/update-settings", {
+        const res = await fetch("/api/applications/update-settings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -141,6 +175,7 @@ export default function CustomizePanel({
         visibleFields,
         activeMetrics,
         removeLogo,
+        conditionalRules: rules,
       }),
     });
     if (!res.ok) {
@@ -155,12 +190,13 @@ export default function CustomizePanel({
     router.refresh();
   }
 
-  const hasChanges =
+    const hasChanges =
     name !== application.name ||
     theme !== application.theme ||
     logoUrl !== (application.logoUrl || "") ||
     JSON.stringify(fields) !== JSON.stringify(initialFields) ||
-    JSON.stringify(metrics) !== JSON.stringify(initialMetrics);
+    JSON.stringify(metrics) !== JSON.stringify(initialMetrics) ||
+    JSON.stringify(rules) !== JSON.stringify(initialRules);
 
   return (
     <div className="space-y-6">
@@ -281,6 +317,139 @@ export default function CustomizePanel({
             </label>
           ))}
         </div>
+      </Section>
+      
+            {/* Conditional rules */}
+      <Section
+        title="Conditional formatting"
+        description="Change how values look based on their content. Example: red when stock is below 10."
+      >
+        {rules.length === 0 && (
+          <p className="text-sm text-gray-400 mb-3">
+            No rules yet.
+          </p>
+        )}
+
+        <div className="space-y-3 mb-4">
+          {rules.map((rule) => (
+            <div
+              key={rule.id}
+              className="border border-gray-200 rounded-md p-3 flex flex-wrap items-end gap-2"
+            >
+              {/* Field */}
+              <div className="min-w-[120px] flex-1">
+                <label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">
+                  When
+                </label>
+                <select
+                  value={rule.field}
+                  onChange={(e) =>
+                    updateRule(rule.id, { field: e.target.value })
+                  }
+                  className="w-full border border-gray-300 text-gray-900 rounded-md px-2 py-1.5 text-sm"
+                >
+                  {fields.map((f) => (
+                    <option key={f.name} value={f.name}>
+                      {f.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Operator */}
+              <div className="min-w-[160px] flex-1">
+                <label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">
+                  Condition
+                </label>
+                <select
+                  value={rule.operator}
+                  onChange={(e) =>
+                    updateRule(rule.id, {
+                      operator: e.target.value as RuleOperator,
+                    })
+                  }
+                  className="w-full border border-gray-300 text-gray-900 rounded-md px-2 py-1.5 text-sm"
+                >
+                  {OPERATORS.map((op) => (
+                    <option key={op.id} value={op.id}>
+                      {op.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Value */}
+              <div className="min-w-[100px] w-24">
+                <label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">
+                  Value
+                </label>
+                <input
+                  type="text"
+                  value={rule.value}
+                  onChange={(e) =>
+                    updateRule(rule.id, { value: e.target.value })
+                  }
+                  placeholder="e.g. 10"
+                  className="w-full border border-gray-300 text-gray-900 rounded-md px-2 py-1.5 text-sm"
+                />
+              </div>
+
+              {/* Second value (only for between) */}
+              {rule.operator === "between" && (
+                <div className="min-w-[100px] w-24">
+                  <label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">
+                    and
+                  </label>
+                  <input
+                    type="text"
+                    value={rule.value2 ?? ""}
+                    onChange={(e) =>
+                      updateRule(rule.id, { value2: e.target.value })
+                    }
+                    placeholder="e.g. 50"
+                    className="w-full border border-gray-300 text-gray-900 rounded-md px-2 py-1.5 text-sm"
+                  />
+                </div>
+              )}
+
+              {/* Style */}
+              <div className="min-w-[140px] flex-1">
+                <label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">
+                  Then show
+                </label>
+                <select
+                  value={rule.style}
+                  onChange={(e) =>
+                    updateRule(rule.id, {
+                      style: e.target.value as RuleStyle,
+                    })
+                  }
+                  className="w-full border border-gray-300 text-gray-900 rounded-md px-2 py-1.5 text-sm"
+                >
+                  {STYLES.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                onClick={() => removeRule(rule.id)}
+                className="text-xs text-gray-400 hover:text-red-600 px-2 py-1.5"
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={addRule}
+          className="text-sm text-black font-medium underline"
+        >
+          + Add rule
+        </button>
       </Section>
 
       {/* Metrics */}

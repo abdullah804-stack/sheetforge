@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import RecordCard from "./RecordCard";
+import { styleForValue, styleClasses, ConditionalRule } from "@/lib/conditional/rules";
 
 interface FieldDef {
   name: string;
@@ -27,12 +28,14 @@ export default function RecordsTable({
   fields,
   initialRecords,
   readOnly = false,
+  rules = [],
 }: {
   applicationId: string;
   entityName: string;
   fields: FieldDef[];
   initialRecords: Record_[];
   readOnly?: boolean;
+  rules?: ConditionalRule[];
 }) {
   const [records, setRecords] = useState<Record_[]>(initialRecords);
   const [search, setSearch] = useState("");
@@ -342,7 +345,7 @@ export default function RecordsTable({
         /* GRID VIEW */
         <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {filtered.map((r) => (
-            <RecordCard
+                        <RecordCard
               key={r.id}
               record={r}
               fields={fields}
@@ -350,6 +353,7 @@ export default function RecordsTable({
               onEdit={() => openEditForm(r)}
               onDelete={() => setDeleteConfirm(r)}
               readOnly={readOnly}
+              rules={rules}
             />
           ))}
         </div>
@@ -383,14 +387,20 @@ export default function RecordsTable({
             <tbody className="divide-y">
               {filtered.map((r) => (
                 <tr key={r.id} className="hover:bg-gray-50">
-                  {visibleFields.map((f) => (
-                    <td
-                      key={f.name}
-                      className="px-4 py-2 text-gray-700 whitespace-nowrap"
-                    >
-                      {formatValue(r.data[f.name], f.type)}
-                    </td>
-                  ))}
+                                    {visibleFields.map((f) => {
+                    const style = styleForValue(rules, f.name, r.data[f.name]);
+                    const cls = styleClasses(style);
+                    return (
+                      <td
+                        key={f.name}
+                        className={`px-4 py-2 whitespace-nowrap ${
+                          cls || "text-gray-700"
+                        }`}
+                      >
+                        {formatValue(r.data[f.name], f.type)}
+                      </td>
+                    );
+                  })}
                                     <td className="px-4 py-2 text-right whitespace-nowrap">
                     {!readOnly && (
                       <>
