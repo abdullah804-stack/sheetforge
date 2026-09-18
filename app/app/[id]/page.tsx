@@ -12,6 +12,7 @@ import Pagination from "./Pagination";
 import ThemeWrapper from "./ThemeWrapper";
 import EntityTabs from "./EntityTabs";
 import { checkAppAccess } from "@/lib/access/check";
+import ChatPanel from "./ChatPanel";
 
 export default async function AppRuntimePage({
   params,
@@ -240,8 +241,9 @@ export default async function AppRuntimePage({
               )}`}
             />
           )}
-        </div>
+                </div>
       </div>
+      <ChatPanel applicationId={application.id} />
     </ThemeWrapper>
   );
 }

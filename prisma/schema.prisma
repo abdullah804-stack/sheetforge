@@ -27,6 +27,7 @@ model User {
     sessions         Session[]
     applications     Application[]
     appMemberships   AppMember[]
+    chatMessages ChatMessage[]
 
 }
 
@@ -87,6 +88,7 @@ model Application {
     records     Record[]
     shareTokens AppShareToken[]
     members     AppMember[]
+    chatMessages ChatMessage[]
 
   @@index([userId])
   @@index([slug])
@@ -149,4 +151,19 @@ model AppMember {
 
   @@unique([applicationId, userId])
   @@index([userId])
+}
+
+model ChatMessage {
+  id            String   @id @default(cuid())
+  applicationId String
+  userId        String
+  role          String   // "user" | "assistant"
+  content       String   @db.Text
+  chart         Json?
+  createdAt     DateTime @default(now())
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, userId, createdAt])
 }
