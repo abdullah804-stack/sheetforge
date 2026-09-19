@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { styleForValue, styleClasses } from "@/lib/conditional/rules";
 import { formatValue } from "@/lib/records/format";
-
+import FieldValue from "@/lib/fields/FieldValue";
 export default async function RecordDetailPage({
   params,
 }: {
@@ -69,7 +69,7 @@ export default async function RecordDetailPage({
           <h1 className="text-2xl font-bold text-gray-900 mb-6">{title}</h1>
 
           <div className="divide-y border-t border-gray-100">
-                        {displayFields.map((f) => {
+                                    {displayFields.map((f) => {
               const style = styleForValue(
                 definition.conditionalRules || [],
                 f.name,
@@ -83,13 +83,13 @@ export default async function RecordDetailPage({
                 >
                   <p className="text-sm text-gray-500">{f.label}</p>
                   <div className="sm:col-span-2">
-                    <p
+                    <div
                       className={`text-sm font-medium break-words inline-block px-1.5 py-0.5 rounded ${
                         cls || "text-gray-900"
                       }`}
                     >
-                      {formatValue(data[f.name], f.type) || "—"}
-                    </p>
+                      <FieldValue value={data[f.name]} type={f.type} />
+                    </div>
                   </div>
                 </div>
               );

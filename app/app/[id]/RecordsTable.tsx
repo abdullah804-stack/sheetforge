@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import RecordCard from "./RecordCard";
+import FieldValue from "@/lib/fields/FieldValue";
 import { styleForValue, styleClasses, ConditionalRule } from "@/lib/conditional/rules";
 
 interface FieldDef {
@@ -387,7 +388,7 @@ export default function RecordsTable({
             <tbody className="divide-y">
               {filtered.map((r) => (
                 <tr key={r.id} className="hover:bg-gray-50">
-                                    {visibleFields.map((f) => {
+                                                      {visibleFields.map((f) => {
                     const style = styleForValue(rules, f.name, r.data[f.name]);
                     const cls = styleClasses(style);
                     return (
@@ -397,7 +398,11 @@ export default function RecordsTable({
                           cls || "text-gray-700"
                         }`}
                       >
-                        {formatValue(r.data[f.name], f.type)}
+                        <FieldValue
+                          value={r.data[f.name]}
+                          type={f.type}
+                          compact
+                        />
                       </td>
                     );
                   })}

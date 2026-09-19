@@ -9,18 +9,24 @@ import Pagination from "@/app/app/[id]/Pagination";
 import ThemeWrapper from "@/app/app/[id]/ThemeWrapper";
 import EntityTabs from "@/app/app/[id]/EntityTabs";
 import { styleForValue, styleClasses } from "@/lib/conditional/rules";
-
+import PivotPanel from "@/app/app/[id]/PivotPanel";
 export const dynamic = "force-dynamic";
+import Link from "next/link";
 
 export default async function PublicAppPage({
   params,
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ page?: string; entity?: string }>;
+  searchParams: Promise<{ page?: string; entity?: string; view?: string }>;
 }) {
   const { slug } = await params;
-  const { page: pageParam, entity: entityParam } = await searchParams;
+    const {
+    page: pageParam,
+    entity: entityParam,
+    view: viewParam,
+  } = await searchParams;
+  const showPivot = viewParam === "pivot";
   const currentPage = Math.max(1, parseInt(pageParam || "1", 10) || 1);
   const PAGE_SIZE = 25;
 
@@ -171,18 +177,58 @@ export default async function PublicAppPage({
 
           {chartInfo.length > 0 && <Charts charts={chartInfo} />}
 
-                    <PublicRecordsTable
-            fields={visibleFields}
-            records={records}
-            rules={definition.conditionalRules || []}
-          />
+                              <div className="mb-4 flex items-center justify-end">
+            <div className="border border-gray-200 rounded-md p-0.5 flex">
+              <Link
+                href={`/a/${slug}?entity=${encodeURIComponent(entityName)}`}
+                className={`px-3 py-1 text-xs rounded ${
+                  !showPivot
+                    ? "theme-accent-bg text-white"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                Records
+              </Link>
+              <Link
+                href={`/a/${slug}?entity=${encodeURIComponent(
+                  entityName
+                )}&view=pivot`}
+                className={`px-3 py-1 text-xs rounded ${
+                  showPivot
+                    ? "theme-accent-bg text-white"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                Pivot
+              </Link>
+            </div>
+          </div>
 
-          {totalPages > 1 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              basePath={`/a/${slug}?entity=${encodeURIComponent(entityName)}`}
-            />
+          {showPivot ? (
+            <div className="bg-white rounded-lg shadow">
+              <PivotPanel
+                records={allRecordObjects}
+                fields={visibleFields}
+              />
+            </div>
+          ) : (
+            <>
+              <PublicRecordsTable
+                fields={visibleFields}
+                records={records}
+                rules={definition.conditionalRules || []}
+              />
+
+              {totalPages > 1 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  basePath={`/a/${slug}?entity=${encodeURIComponent(
+                    entityName
+                  )}`}
+                />
+              )}
+            </>
           )}
         </div>
       </div>

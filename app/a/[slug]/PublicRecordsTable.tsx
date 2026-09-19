@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import PublicRecordCard from "./PublicRecordCard";
 import { styleForValue, styleClasses, ConditionalRule } from "@/lib/conditional/rules";
+import FieldValue from "@/lib/fields/FieldValue";
 interface FieldDef {
   name: string;
   label: string;
@@ -172,7 +173,7 @@ export default function PublicRecordsTable({
             <tbody className="divide-y">
               {filtered.map((r) => (
                 <tr key={r.id} className="hover:bg-gray-50">
-                                    {visibleFields.map((f) => {
+                                                      {visibleFields.map((f) => {
                     const style = styleForValue(rules, f.name, r.data[f.name]);
                     const cls = styleClasses(style);
                     return (
@@ -182,7 +183,11 @@ export default function PublicRecordsTable({
                           cls || "text-gray-700"
                         }`}
                       >
-                        {formatValue(r.data[f.name], f.type)}
+                        <FieldValue
+                          value={r.data[f.name]}
+                          type={f.type}
+                          compact
+                        />
                       </td>
                     );
                   })}

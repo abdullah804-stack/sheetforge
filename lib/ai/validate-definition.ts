@@ -56,6 +56,7 @@ const VALID_FIELD_TYPES = [
   "select",
   "email",
   "url",
+  "image",
 ];
 
 const VALID_APP_TYPES = [
@@ -181,6 +182,12 @@ function mapDetectedType(t: string): string {
       return "boolean";
     case "date":
       return "date";
+    case "email":
+      return "email";
+    case "url":
+      return "url";
+    case "image":
+      return "image";
     default:
       return "text";
   }

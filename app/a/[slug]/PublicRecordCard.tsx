@@ -1,6 +1,6 @@
 "use client";
 import { styleForValue, styleClasses, ConditionalRule } from "@/lib/conditional/rules";
-
+import FieldValue from "@/lib/fields/FieldValue";
 interface FieldDef {
   name: string;
   label: string;
@@ -50,18 +50,42 @@ export default function PublicRecordCard({
       )}
 
       {/* Chip fields */}
-      {chipFields.length > 0 && (
+            {chipFields.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-3">
           {chipFields.slice(0, 3).map((f) => (
             <span
               key={f.name}
-              className="text-[11px] text-gray-600 bg-gray-50 border border-gray-100 rounded px-1.5 py-0.5"
+              className="text-[11px] text-gray-600 bg-gray-50 border border-gray-100 rounded px-1.5 py-0.5 max-w-full truncate"
             >
-              {String(record.data[f.name] ?? "—")}
+              <FieldValue
+                value={record.data[f.name]}
+                type={f.type}
+                compact
+              />
             </span>
           ))}
         </div>
       )}
+
+            {/* Image fields */}
+      {(() => {
+        const imageFields = visibleFields.filter((f) => f.type === "image");
+        if (imageFields.length === 0) return null;
+        return (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {imageFields.slice(0, 4).map((f) => (
+              <div key={f.name}>
+                <FieldValue
+                  value={record.data[f.name]}
+                  type="image"
+                  compact
+                />
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
 
       {/* Number fields */}
             {numberFields.length > 0 && (

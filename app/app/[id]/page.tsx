@@ -6,7 +6,7 @@ import Charts from "./Charts";
 import { generateSummary } from "@/lib/summary/generate";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import Link from "next/link";
+import Link from "next/link";import PivotPanel from "./PivotPanel";
 import RecordsTable from "./RecordsTable";
 import Pagination from "./Pagination";
 import ThemeWrapper from "./ThemeWrapper";
@@ -19,7 +19,7 @@ export default async function AppRuntimePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ page?: string; entity?: string }>;
+  searchParams: Promise<{ page?: string; entity?: string; view?: string }>;
 }) {
   const session = await auth();
 
@@ -28,7 +28,12 @@ export default async function AppRuntimePage({
   }
 
   const { id } = await params;
-  const { page: pageParam, entity: entityParam } = await searchParams;
+    const {
+    page: pageParam,
+    entity: entityParam,
+    view: viewParam,
+  } = await searchParams;
+  const showPivot = viewParam === "pivot";
   const currentPage = Math.max(1, parseInt(pageParam || "1", 10) || 1);
   const PAGE_SIZE = 25;
 
@@ -223,24 +228,66 @@ export default async function AppRuntimePage({
           {/* Charts — primary entity only */}
           {chartInfo.length > 0 && <Charts charts={chartInfo} />}
 
-                              <RecordsTable
-            applicationId={application.id}
-            entityName={entityName}
-            fields={visibleFields}
-            initialRecords={records}
-            readOnly={!canEdit}
-            rules={definition.conditionalRules || []}
-          />
+                                        {/* View toggle */}
+          <div className="mb-4 flex items-center justify-end">
+            <div className="border border-gray-200 rounded-md p-0.5 flex">
+              <Link
+                href={`/app/${application.id}?entity=${encodeURIComponent(
+                  entityName
+                )}`}
+                className={`px-3 py-1 text-xs rounded ${
+                  !showPivot
+                    ? "theme-accent-bg text-white"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                Records
+              </Link>
+              <Link
+                href={`/app/${application.id}?entity=${encodeURIComponent(
+                  entityName
+                )}&view=pivot`}
+                className={`px-3 py-1 text-xs rounded ${
+                  showPivot
+                    ? "theme-accent-bg text-white"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                Pivot
+              </Link>
+            </div>
+          </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              basePath={`/app/${application.id}?entity=${encodeURIComponent(
-                entityName
-              )}`}
-            />
+          {showPivot ? (
+            <div className="bg-white rounded-lg shadow">
+              <PivotPanel
+                records={allRecordObjects}
+                fields={visibleFields}
+              />
+            </div>
+          ) : (
+            <>
+              {/* Records — paginated, only visible fields */}
+              <RecordsTable
+                applicationId={application.id}
+                entityName={entityName}
+                fields={visibleFields}
+                initialRecords={records}
+                readOnly={!canEdit}
+                rules={definition.conditionalRules || []}
+              />
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  basePath={`/app/${application.id}?entity=${encodeURIComponent(
+                    entityName
+                  )}`}
+                />
+              )}
+            </>
           )}
                 </div>
       </div>

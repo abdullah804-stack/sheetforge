@@ -26,7 +26,7 @@ The JSON must match this exact shape:
       {
         "name": "string — snake_case",
         "label": "string — human label",
-        "type": "text" | "longtext" | "integer" | "decimal" | "currency" | "boolean" | "date" | "datetime" | "select" | "email" | "url",
+        "type": "text" | "longtext" | "integer" | "decimal" | "currency" | "boolean" | "date" | "datetime" | "select" | "email" | "url" | "image",
         "required": true | false,
         "searchable": true | false,
         "filterable": true | false,
@@ -72,7 +72,10 @@ RULES:
 - If you are unsure, use "generic" as applicationType and lower the confidence.
 - Suggest 2–4 dashboard metrics that are useful and calculable from real fields.
 - Suggest 0–3 charts that make sense from the data.
-- Searchable fields are usually: names, IDs, email addresses.
+- If a column contains email addresses, use "email".
+- If a column contains URLs to web pages, use "url".
+- If a column contains URLs to images (ending in .jpg/.png/.gif/.webp/.svg), use "image".
+- Do NOT mix these: a column of emails is "email", not "url".
 - Filterable fields are usually: categories, statuses, select-like fields.
 - Sortable fields are usually: numbers, dates, names.
 - Visible: true for most; false for internal IDs if a friendlier identifier exists.

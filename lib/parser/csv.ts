@@ -3,7 +3,16 @@ import Papa from "papaparse";
 export interface ColumnProfile {
   name: string;
   index: number;
-  detectedType: "text" | "integer" | "decimal" | "date" | "boolean" | "unknown";
+  detectedType:
+    | "text"
+    | "integer"
+    | "decimal"
+    | "date"
+    | "boolean"
+    | "email"
+    | "url"
+    | "image"
+    | "unknown";
   totalValues: number;
   emptyValues: number;
   emptyPercent: number;
@@ -143,6 +152,26 @@ function detectType(values: string[]): ColumnProfile["detectedType"] {
     /^(true|false|yes|no|y|n|0|1)$/i.test(v)
   );
   if (allBooleans) return "boolean";
+
+  // Email check (before URL — emails also contain ".")
+  const allEmails = sample.every((v) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())
+  );
+  if (allEmails) return "email";
+
+  // Image URL check (before generic URL)
+  const allImageUrls = sample.every((v) =>
+    /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp|svg|avif)(\?.*)?$/i.test(
+      v.trim()
+    )
+  );
+  if (allImageUrls) return "image";
+
+  // Generic URL check
+  const allUrls = sample.every((v) =>
+    /^https?:\/\/[^\s]+$/i.test(v.trim())
+  );
+  if (allUrls) return "url";
 
   const allDates = sample.every((v) => {
     const d = new Date(v);

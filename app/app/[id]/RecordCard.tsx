@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import FieldValue from "@/lib/fields/FieldValue";
+
 import { styleForValue, styleClasses, ConditionalRule } from "@/lib/conditional/rules";
 interface FieldDef {
   name: string;
@@ -58,15 +60,19 @@ export default function RecordCard({
         </span>
       )}
 
-      {/* Chip fields (short text) */}
+            {/* Chip fields (short text) */}
       {chipFields.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-3">
           {chipFields.slice(0, 3).map((f) => (
             <span
               key={f.name}
-              className="text-[11px] text-gray-600 bg-gray-50 border border-gray-100 rounded px-1.5 py-0.5"
+              className="text-[11px] text-gray-600 bg-gray-50 border border-gray-100 rounded px-1.5 py-0.5 max-w-full truncate"
             >
-              {String(record.data[f.name] ?? "—")}
+              <FieldValue
+                value={record.data[f.name]}
+                type={f.type}
+                compact
+              />
             </span>
           ))}
         </div>
@@ -95,6 +101,25 @@ export default function RecordCard({
           })}
         </div>
       )}
+
+            {/* Image fields */}
+      {(() => {
+        const imageFields = visibleFields.filter((f) => f.type === "image");
+        if (imageFields.length === 0) return null;
+        return (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {imageFields.slice(0, 4).map((f) => (
+              <div key={f.name}>
+                <FieldValue
+                  value={record.data[f.name]}
+                  type="image"
+                  compact
+                />
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Actions */}
                   <div className="flex items-center justify-between pt-3 border-t border-gray-100">
