@@ -45,3 +45,7 @@ next-env.d.ts
 !/uploads/.gitkeep
 .vercel
 .env*
+
+.env
+.env.local
+.env*.local
