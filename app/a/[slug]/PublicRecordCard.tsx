@@ -1,6 +1,7 @@
 "use client";
 import { styleForValue, styleClasses, ConditionalRule } from "@/lib/conditional/rules";
 import FieldValue from "@/lib/fields/FieldValue";
+
 interface FieldDef {
   name: string;
   label: string;
@@ -32,7 +33,7 @@ export default function PublicRecordCard({
   const title = titleField ? String(record.data[titleField.name] ?? "") : "—";
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 hover:shadow-md transition">
+    <div className="h-full flex flex-col bg-white rounded-lg border border-gray-100 shadow-sm p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)]">
       {/* Title */}
       <h3 className="text-sm font-semibold text-gray-900 truncate mb-1">
         {title || "(untitled)"}
@@ -41,7 +42,7 @@ export default function PublicRecordCard({
       {/* Status chip */}
       {statusField && record.data[statusField.name] && (
         <span
-          className={`inline-block text-[10px] px-2 py-0.5 rounded-full mb-2 ${statusColor(
+          className={`self-start inline-block text-[10px] font-medium px-2 py-0.5 rounded-full mb-2 ${statusColor(
             String(record.data[statusField.name])
           )}`}
         >
@@ -50,12 +51,12 @@ export default function PublicRecordCard({
       )}
 
       {/* Chip fields */}
-            {chipFields.length > 0 && (
+      {chipFields.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-3">
           {chipFields.slice(0, 3).map((f) => (
             <span
               key={f.name}
-              className="text-[11px] text-gray-600 bg-gray-50 border border-gray-100 rounded px-1.5 py-0.5 max-w-full truncate"
+              className="inline-block text-[11px] text-gray-600 bg-gray-50 border border-gray-100 rounded px-1.5 py-0.5 max-w-full truncate"
             >
               <FieldValue
                 value={record.data[f.name]}
@@ -67,14 +68,17 @@ export default function PublicRecordCard({
         </div>
       )}
 
-            {/* Image fields */}
+      {/* Image fields */}
       {(() => {
         const imageFields = visibleFields.filter((f) => f.type === "image");
         if (imageFields.length === 0) return null;
         return (
           <div className="flex flex-wrap gap-2 mb-3">
             {imageFields.slice(0, 4).map((f) => (
-              <div key={f.name}>
+              <div
+                key={f.name}
+                className="h-12 w-12 overflow-hidden rounded-md border border-gray-100 bg-gray-50 [&_img]:h-full [&_img]:w-full [&_img]:object-cover"
+              >
                 <FieldValue
                   value={record.data[f.name]}
                   type="image"
@@ -86,10 +90,9 @@ export default function PublicRecordCard({
         );
       })()}
 
-
       {/* Number fields */}
-            {numberFields.length > 0 && (
-        <div className="flex items-baseline gap-3 pt-2 border-t border-gray-100">
+      {numberFields.length > 0 && (
+        <div className="mt-auto flex items-baseline gap-3 pt-2 border-t border-gray-100">
           {numberFields.slice(0, 2).map((f) => {
             const style = styleForValue(rules, f.name, record.data[f.name]);
             const cls = styleClasses(style);

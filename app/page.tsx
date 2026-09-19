@@ -1,6 +1,96 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { auth } from "@/auth";
 import Reveal from "@/components/Reveal";
+
+const useCases: { label: string; icon: ReactNode }[] = [
+  {
+    label: "Inventory",
+    icon: (
+      <>
+        <path d="M21 8l-9-5-9 5v8l9 5 9-5V8z" />
+        <path d="M3 8l9 5 9-5" />
+        <path d="M12 13v8" />
+      </>
+    ),
+  },
+  {
+    label: "Customers",
+    icon: (
+      <>
+        <circle cx="12" cy="8" r="4" />
+        <path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" />
+      </>
+    ),
+  },
+  {
+    label: "Orders",
+    icon: (
+      <>
+        <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3z" />
+        <path d="M9 8h6" />
+        <path d="M9 12h6" />
+      </>
+    ),
+  },
+  {
+    label: "Employees",
+    icon: (
+      <>
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <circle cx="9" cy="11" r="2" />
+        <path d="M6 16c.5-1.5 1.7-2 3-2s2.5.5 3 2" />
+        <path d="M14 10h4" />
+        <path d="M14 13h4" />
+      </>
+    ),
+  },
+  {
+    label: "Expenses",
+    icon: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 6v12" />
+        <path d="M15 9.5C14.5 8.5 13.5 8 12 8c-1.7 0-3 .8-3 2s1.3 1.7 3 2 3 .8 3 2-1.3 2-3 2c-1.5 0-2.5-.5-3-1.5" />
+      </>
+    ),
+  },
+  {
+    label: "Projects",
+    icon: (
+      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+    ),
+  },
+  {
+    label: "Products",
+    icon: (
+      <>
+        <path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" />
+        <circle cx="7.5" cy="7.5" r="0.5" />
+      </>
+    ),
+  },
+  {
+    label: "Tasks",
+    icon: (
+      <>
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <path d="M8 12l3 3 5-6" />
+      </>
+    ),
+  },
+  {
+    label: "Suppliers",
+    icon: (
+      <>
+        <path d="M2 5h11v11H2z" />
+        <path d="M13 8h4l4 4v4h-8" />
+        <circle cx="6" cy="18" r="2" />
+        <circle cx="17" cy="18" r="2" />
+      </>
+    ),
+  },
+];
 
 export default async function LandingPage() {
   const session = await auth();
@@ -8,7 +98,7 @@ export default async function LandingPage() {
   return (
     <div className="min-h-screen bg-white">
       {/* NAVBAR */}
-      <nav className="border-b border-gray-100 sticky top-0 bg-white/80 backdrop-blur z-50">
+      <nav className="border-b border-gray-100 sticky top-0 bg-white/80 backdrop-blur z-50 shadow-[0_1px_2px_0_rgb(0_0_0_/_0.02)]">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="font-semibold text-lg tracking-tight">
             SheetForge
@@ -68,9 +158,9 @@ export default async function LandingPage() {
 
         <Reveal delay={2}>
           <p className="text-lg text-gray-600 leading-relaxed mb-8 max-w-2xl">
-            Upload any Excel or CSV file. We turn it into a clean, friendly
-            view with charts, a plain-English summary, and easy editing. Share
-            it with a link. Download it whenever you want.
+            Upload any Excel or CSV file. Get a clean view with charts, a
+            plain-English summary, and easy editing. Share it with a link.
+            Download it back any time.
           </p>
         </Reveal>
 
@@ -143,8 +233,12 @@ export default async function LandingPage() {
               </table>
             </div>
 
-            {/* Arrow */}
-            <div className="hidden md:flex items-center justify-center text-gray-400">
+            {/* Arrow + file-type chips */}
+            <div className="hidden md:flex flex-col items-center justify-center gap-4 text-gray-400">
+              <div className="flex flex-col items-center gap-2" aria-hidden="true">
+                <FileChip label=".xlsx" />
+                <FileChip label=".csv" delay="-3s" />
+              </div>
               <span className="text-2xl pulse-arrow">→</span>
             </div>
 
@@ -288,8 +382,48 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* BUILT RIGHT */}
+      {/* USE IT FOR ANYTHING */}
       <section className="border-t border-gray-100 bg-gray-50/50">
+        <div className="max-w-6xl mx-auto px-6 py-24">
+          <Reveal>
+            <h2 className="text-3xl font-semibold tracking-tight mb-3">
+              Use it for anything
+            </h2>
+            <p className="text-gray-600 mb-14 max-w-2xl">
+              If it lives in a spreadsheet, it works here.
+            </p>
+          </Reveal>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-10 gap-y-10">
+            {useCases.map((item, i) => (
+              <Reveal key={item.label} delay={((i % 3) + 1) as 1 | 2 | 3}>
+                <div className="flex flex-col items-center justify-center gap-3 py-6 px-4 bg-white rounded-lg border border-gray-200 hover:border-gray-400 transition-colors">
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.75"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="w-5 h-5 text-gray-500"
+                    aria-hidden="true"
+                  >
+                    {item.icon}
+                  </svg>
+                  <span className="text-sm font-medium text-gray-900">
+                    {item.label}
+                  </span>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* BUILT RIGHT */}
+      <section className="border-t border-gray-100">
         <div className="max-w-6xl mx-auto px-6 py-24">
           <Reveal>
             <h2 className="text-3xl font-semibold tracking-tight mb-3">
@@ -360,7 +494,15 @@ export default async function LandingPage() {
       {/* FOOTER */}
       <footer className="border-t border-gray-100">
         <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-500">
-          <div>© {new Date().getFullYear()} SheetForge</div>
+          <div className="flex items-center gap-2">
+            <span
+              className="inline-flex items-center justify-center w-4 h-4 bg-black text-white text-[10px] font-semibold leading-none rounded-sm"
+              aria-hidden="true"
+            >
+              S
+            </span>
+            <span>© {new Date().getFullYear()} SheetForge</span>
+          </div>
           <div className="flex items-center gap-6">
             <a
               href="https://github.com/abdullah804-stack/sheetforge"
@@ -379,6 +521,31 @@ export default async function LandingPage() {
           </div>
         </div>
       </footer>
+    </div>
+  );
+}
+
+function FileChip({ label, delay }: { label: string; delay?: string }) {
+  return (
+    <div
+      className="inline-flex items-center gap-1.5 bg-white text-[11px] font-medium text-gray-500 border border-gray-200 rounded-full px-2.5 py-1 shadow-sm float-slow"
+      style={delay ? { animationDelay: delay } : undefined}
+    >
+      <svg
+        width="12"
+        height="12"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="text-gray-400"
+      >
+        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+        <path d="M14 3v5h5" />
+      </svg>
+      {label}
     </div>
   );
 }

@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import type { CSSProperties } from "react";
 import PublicRecordCard from "./PublicRecordCard";
 import { styleForValue, styleClasses, ConditionalRule } from "@/lib/conditional/rules";
 import FieldValue from "@/lib/fields/FieldValue";
+
 interface FieldDef {
   name: string;
   label: string;
@@ -19,6 +21,14 @@ interface Record_ {
 }
 
 type ViewMode = "grid" | "list";
+
+function stagger(ms: number): CSSProperties {
+  return {
+    animationDelay: `${ms}ms`,
+    transitionDelay: `${ms}ms`,
+    animationFillMode: "both",
+  };
+}
 
 export default function PublicRecordsTable({
   fields,
@@ -87,36 +97,39 @@ export default function PublicRecordsTable({
     }
   }
 
+  const toggleBase =
+    "px-2.5 py-1 text-xs font-medium rounded transition-all duration-150";
+  const toggleActive = "bg-white shadow-sm text-gray-900";
+  const toggleInactive = "text-gray-500 hover:text-gray-900";
+
   return (
     <div className="bg-white rounded-lg shadow">
       {/* Toolbar */}
-      <div className="p-4 border-b flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3 p-4 border-b border-gray-100">
         <input
           type="text"
           placeholder="Search..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="border border-gray-300 text-gray-900 rounded-md px-3 py-2 text-sm w-full sm:w-64"
+          className="h-10 px-3 rounded-lg border border-gray-300 text-gray-900 placeholder:text-gray-400 text-sm w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-black focus:border-black"
         />
 
         <div className="flex items-center gap-2 ml-auto">
-          <div className="border border-gray-200 rounded-md p-0.5 flex">
+          <div className="bg-gray-100 rounded-md p-0.5 flex">
             <button
+              type="button"
               onClick={() => setView("grid")}
-              className={`px-2.5 py-1 text-xs rounded ${
-                view === "grid"
-                  ? "theme-accent-bg text-white"
-                  : "text-gray-600 hover:text-gray-900"
+              className={`${toggleBase} ${
+                view === "grid" ? toggleActive : toggleInactive
               }`}
             >
               Grid
             </button>
             <button
+              type="button"
               onClick={() => setView("list")}
-              className={`px-2.5 py-1 text-xs rounded ${
-                view === "list"
-                  ? "theme-accent-bg text-white"
-                  : "text-gray-600 hover:text-gray-900"
+              className={`${toggleBase} ${
+                view === "list" ? toggleActive : toggleInactive
               }`}
             >
               List
@@ -131,33 +144,74 @@ export default function PublicRecordsTable({
       </div>
 
       {filtered.length === 0 ? (
-        <div className="p-16 text-center text-sm text-gray-500">
-          {records.length === 0
-            ? "No records to show."
-            : "No matches for your search."}
+        <div className="px-6 py-16 flex flex-col items-center text-center">
+          <div className="h-10 w-10 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center mb-3">
+            {records.length === 0 ? (
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
+                <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+              </svg>
+            ) : (
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" />
+              </svg>
+            )}
+          </div>
+          <p className="text-sm font-semibold text-gray-900">
+            Nothing to show
+          </p>
+          <p className="mt-1 text-sm text-gray-500 max-w-xs">
+            {records.length === 0
+              ? "There are no records here yet."
+              : "No records match your search. Try a different term."}
+          </p>
         </div>
       ) : view === "grid" ? (
         <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filtered.map((r) => (
-                        <PublicRecordCard
+          {filtered.map((r, i) => (
+            <div
               key={r.id}
-              record={r}
-              fields={fields}
-              rules={rules}
-            />
+              className="animate-fade-up h-full"
+              style={stagger(Math.min(i * 30, 300))}
+            >
+              <PublicRecordCard record={r} fields={fields} rules={rules} />
+            </div>
           ))}
         </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
+            <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 {visibleFields.map((f) => (
                   <th
                     key={f.name}
                     onClick={() => f.sortable && handleSort(f.name)}
-                    className={`px-4 py-2 text-left text-xs font-semibold text-gray-600 whitespace-nowrap ${
-                      f.sortable ? "cursor-pointer hover:bg-gray-100" : ""
+                    className={`px-4 py-2 text-left text-xs font-semibold text-gray-600 whitespace-nowrap transition-colors ${
+                      f.sortable
+                        ? "cursor-pointer select-none hover:bg-gray-100"
+                        : ""
                     }`}
                   >
                     {f.label}
@@ -170,10 +224,13 @@ export default function PublicRecordsTable({
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody className="divide-y divide-gray-100">
               {filtered.map((r) => (
-                <tr key={r.id} className="hover:bg-gray-50">
-                                                      {visibleFields.map((f) => {
+                <tr
+                  key={r.id}
+                  className="hover:bg-gray-50 transition-colors"
+                >
+                  {visibleFields.map((f) => {
                     const style = styleForValue(rules, f.name, r.data[f.name]);
                     const cls = styleClasses(style);
                     return (

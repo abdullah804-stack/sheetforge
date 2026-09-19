@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import Button from "@/components/ui/Button";
 import AIReasoning from "./AIReasoning";
 import SharePanel from "./SharePanel";
 
@@ -30,27 +31,61 @@ interface Workbook {
   parsedData?: any;
 }
 
+type StatusIconKind = "check" | "dot" | "circle" | "alert";
+
 /**
  * Friendly status labels.
  */
-function friendlyStatus(s: string): { label: string; color: string } {
+function friendlyStatus(s: string): {
+  label: string;
+  color: string;
+  icon: StatusIconKind;
+} {
   switch (s) {
     case "DRAFT":
-      return { label: "Not started", color: "bg-gray-100 text-gray-600" };
+      return {
+        label: "Not started",
+        color: "bg-gray-100 text-gray-600",
+        icon: "circle",
+      };
     case "UPLOADED":
-      return { label: "File uploaded", color: "bg-gray-100 text-gray-600" };
+      return {
+        label: "File uploaded",
+        color: "bg-gray-100 text-gray-600",
+        icon: "dot",
+      };
     case "PARSED":
-      return { label: "File read", color: "bg-blue-50 text-blue-700" };
+      return {
+        label: "File read",
+        color: "bg-blue-50 text-blue-700",
+        icon: "dot",
+      };
     case "GENERATED":
-      return { label: "Built", color: "bg-blue-50 text-blue-700" };
+      return {
+        label: "Built",
+        color: "bg-blue-50 text-blue-700",
+        icon: "dot",
+      };
     case "READY":
-      return { label: "Ready to use", color: "bg-green-50 text-green-700" };
+      return {
+        label: "Ready to use",
+        color: "bg-green-50 text-green-700",
+        icon: "check",
+      };
     case "PUBLISHED":
-      return { label: "Published", color: "bg-green-50 text-green-700" };
+      return {
+        label: "Published",
+        color: "bg-green-50 text-green-700",
+        icon: "check",
+      };
     case "PARSE_FAILED":
-      return { label: "Could not read file", color: "bg-red-50 text-red-700" };
+      return {
+        label: "Could not read file",
+        color: "bg-red-50 text-red-700",
+        icon: "alert",
+      };
     default:
-      return { label: s, color: "bg-gray-100 text-gray-600" };
+      return { label: s, color: "bg-gray-100 text-gray-600", icon: "dot" };
   }
 }
 
@@ -275,7 +310,7 @@ export default function AppDetailPage() {
         {/* ============================================ */}
         {/* BLOCK 1 — Header + Actions                   */}
         {/* ============================================ */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <div className="bg-white rounded-lg shadow p-6 mb-6 animate-fade-up">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
@@ -283,8 +318,9 @@ export default function AppDetailPage() {
               </h1>
               <div className="flex items-center gap-2 mt-1.5">
                 <span
-                  className={`text-xs px-2 py-0.5 rounded font-medium ${status.color}`}
+                  className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded font-medium ${status.color}`}
                 >
+                  <StatusIcon kind={status.icon} />
                   {status.label}
                 </span>
                 <span className="text-xs text-gray-400">
@@ -296,42 +332,47 @@ export default function AppDetailPage() {
           </div>
 
           {/* Primary actions — only show what's available */}
-                    <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {hasDefinition && (
               <>
-                <Link
-                  href={`/app/${application.id}`}
-                  className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition"
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={() => router.push(`/app/${application.id}`)}
                 >
                   Open app →
-                </Link>
-                <Link
-                  href={`/dashboard/app/${application.id}/customize`}
-                  className="border border-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm hover:bg-gray-50 transition"
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="md"
+                  onClick={() =>
+                    router.push(`/dashboard/app/${application.id}/customize`)
+                  }
                 >
                   Customize
-                </Link>
-                <a
-                  href={`/api/applications/export?applicationId=${application.id}&format=csv`}
-                  className="border border-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm hover:bg-gray-50 transition"
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="md"
+                  onClick={() => {
+                    window.location.href = `/api/applications/export?applicationId=${application.id}&format=csv`;
+                  }}
                 >
                   Download
-                </a>
+                </Button>
                 {!isPublished ? (
-                  <button
+                  <Button
+                    variant="secondary"
+                    size="md"
                     onClick={handlePublish}
-                    disabled={publishing}
-                    className="border border-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm hover:bg-gray-50 transition disabled:opacity-50"
+                    loading={publishing}
                   >
                     {publishing ? "Publishing..." : "Share"}
-                  </button>
+                  </Button>
                 ) : (
-                  <button
-                    onClick={copyLink}
-                    className="border border-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm hover:bg-gray-50 transition"
-                  >
+                  <Button variant="secondary" size="md" onClick={copyLink}>
                     {copied ? "✓ Link copied" : "Copy share link"}
-                  </button>
+                  </Button>
                 )}
               </>
             )}
@@ -374,7 +415,7 @@ export default function AppDetailPage() {
           )}
         </div>
 
-                {/* ============================================ */}
+        {/* ============================================ */}
         {/* Team sharing (only after app is built)       */}
         {/* ============================================ */}
         {hasDefinition && (
@@ -389,7 +430,10 @@ export default function AppDetailPage() {
         {/* ============================================ */}
         {/* BLOCK 2 — File + Progress                    */}
         {/* ============================================ */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <div
+          className="bg-white rounded-lg shadow p-6 mb-6 animate-fade-up"
+          style={{ animationDelay: "50ms" }}
+        >
           {!hasFile ? (
             <>
               <h2 className="text-base font-semibold text-gray-900 mb-1">
@@ -431,7 +475,7 @@ export default function AppDetailPage() {
             </>
           ) : (
             <>
-              <div className="flex items-start justify-between gap-4 mb-4">
+              <div className="flex items-start justify-between gap-4 mb-5">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">
                     {workbook.filename}
@@ -443,24 +487,23 @@ export default function AppDetailPage() {
                 </div>
               </div>
 
-              {/* Progress steps */}
-              <div className="space-y-2">
-                <ProgressStep
-                  done
-                  label="File uploaded"
-                />
+              {/* Progress timeline */}
+              <div>
+                <ProgressStep done label="File uploaded" />
                 <ProgressStep
                   done={hasAnalysis}
                   active={!hasAnalysis && !analyzing}
                   label="We look inside"
                   action={
                     !hasAnalysis && !analyzing ? (
-                      <button
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="-my-1"
                         onClick={handleAnalyze}
-                        className="text-xs text-black font-medium underline"
                       >
                         Read it now
-                      </button>
+                      </Button>
                     ) : !hasAnalysis && analyzing ? (
                       <span className="text-xs text-gray-400">Reading...</span>
                     ) : null
@@ -472,18 +515,20 @@ export default function AppDetailPage() {
                   label="We build your app"
                   action={
                     hasAnalysis && !hasDefinition && !generating ? (
-                      <button
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="-my-1"
                         onClick={handleGenerate}
-                        className="text-xs text-black font-medium underline"
                       >
                         Build it now
-                      </button>
+                      </Button>
                     ) : hasAnalysis && !hasDefinition && generating ? (
                       <span className="text-xs text-gray-400">Building...</span>
                     ) : null
                   }
                 />
-                <ProgressStep done={hasDefinition} label="Ready to use" />
+                <ProgressStep done={hasDefinition} label="Ready to use" last />
               </div>
 
               {/* Preview toggle — small, quiet */}
@@ -525,22 +570,54 @@ export default function AppDetailPage() {
 /* Sub-components                                                      */
 /* ------------------------------------------------------------------ */
 
+function StatusIcon({ kind }: { kind: StatusIconKind }) {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {kind === "check" && <path d="M5 13l4 4L19 7" />}
+      {kind === "dot" && (
+        <circle cx="12" cy="12" r="4" fill="currentColor" stroke="none" />
+      )}
+      {kind === "circle" && <circle cx="12" cy="12" r="7" />}
+      {kind === "alert" && (
+        <>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 8v5" />
+          <path d="M12 16h.01" />
+        </>
+      )}
+    </svg>
+  );
+}
+
 function ProgressStep({
   done,
   active,
   label,
   action,
+  last,
 }: {
   done: boolean;
   active?: boolean;
   label: string;
   action?: React.ReactNode;
+  last?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between text-sm">
-      <div className="flex items-center gap-3">
+    <div className="flex gap-3">
+      {/* Indicator + connector */}
+      <div className="flex flex-col items-center">
         <div
-          className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${
+          className={`w-6 h-6 shrink-0 rounded-full flex items-center justify-center transition-all duration-300 ${
             done
               ? "bg-green-100 text-green-700"
               : active
@@ -548,21 +625,50 @@ function ProgressStep({
                 : "bg-gray-100 text-gray-400"
           }`}
         >
-          {done ? "✓" : active ? "•" : "·"}
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            {done ? (
+              <path d="M5 13l4 4L19 7" />
+            ) : active ? (
+              <circle cx="12" cy="12" r="4" fill="currentColor" stroke="none" />
+            ) : (
+              <circle cx="12" cy="12" r="4" strokeWidth="2" />
+            )}
+          </svg>
         </div>
+        {!last && (
+          <div
+            className={`w-px flex-1 min-h-3 my-1 transition-colors duration-300 ${
+              done ? "bg-green-200" : "bg-transparent"
+            }`}
+          />
+        )}
+      </div>
+
+      {/* Label + action */}
+      <div className="flex-1 min-w-0 flex items-start justify-between gap-3 text-sm">
         <span
-          className={
+          className={`h-6 flex items-center ${
             done
               ? "text-gray-900 font-medium"
               : active
                 ? "text-gray-700"
                 : "text-gray-400"
-          }
+          }`}
         >
           {label}
         </span>
+        {action && <div className="h-6 flex items-center">{action}</div>}
       </div>
-      {action}
     </div>
   );
 }

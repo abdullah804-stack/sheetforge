@@ -2,6 +2,14 @@
 
 :root {
   --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-soft: #eff6ff;
+  --radius: 8px;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.04);
+  --transition-fast: 150ms ease;
+  --transition-base: 250ms ease;
 }
 
 html {
@@ -31,8 +39,8 @@ body {
 /* Scroll-triggered fade-in (existing) */
 .reveal {
   opacity: 0;
-  transform: translateY(16px);
-  transition: opacity 0.7s ease, transform 0.7s ease;
+  transform: translateY(12px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
 }
 
 .reveal.visible {
@@ -83,6 +91,26 @@ body {
   border-radius: 4px;
 }
 
+/* Fade up — runs once */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-up {
+  animation: fade-up 200ms ease-out both;
+}
+
+/* Fade in — runs once */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fade-in 150ms ease-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .reveal {
     opacity: 1;
@@ -91,7 +119,9 @@ body {
   }
   .float-slow,
   .pulse-arrow,
-  .skeleton {
+  .skeleton,
+  .animate-fade-up,
+  .animate-fade-in {
     animation: none;
   }
 }
